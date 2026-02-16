@@ -2451,7 +2451,6 @@ router.post('/contribuicoes', auth, async (req, res) => {
 
 const { Op } = require('sequelize');
 
-
 // Rota - Listar contribuições filtradas pelo usuário logado (Sede/Filial)
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
@@ -2465,8 +2464,8 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     if (startDate && endDate) {
       where.data = {
         [Op.between]: [
-          `${startDate} 00:00:00`,
-          `${endDate} 23:59:59`
+          new Date(`${startDate}T00:00:00`),
+          new Date(`${endDate}T23:59:59`)
         ]
       };
     }
@@ -2474,28 +2473,50 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     // -----------------------------
     // 🔎 FILTROS OPCIONAIS
     // -----------------------------
-    if (tipoId) where.TipoContribuicaoId = tipoId;
-    if (membroId) where.MembroId = membroId;
+    if (tipoId) {
+      where.TipoContribuicaoId = tipoId;
+    }
+
+    if (membroId) {
+      where.MembroId = membroId;
+    } else {
+      // 🔥 IMPEDIR "SEM MEMBRO" NO RELATÓRIO
+      where.MembroId = {
+        [Op.ne]: null
+      };
+    }
 
     // -----------------------------
-    // 🔐 FILTRO HIERÁRQUICO
+    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILIAL)
     // -----------------------------
-    const { SedeId, FilhalId } = req.usuario;
+    const { SedeId, FilialId, FilhalId } = req.usuario;
 
-    if (FilhalId) {
-      where.FilhalId = FilhalId;
+    // Caso o teu sistema esteja usando "FilhalId" por erro de digitação,
+    // ele ainda funcionará sem quebrar
+    const filial = FilialId || FilhalId;
+
+    if (filial) {
+      where.FilialId = filial;
     } else if (SedeId) {
       where.SedeId = SedeId;
     }
 
     // -----------------------------
-    // 📥 CONSULTA NO BANCO
+    // 📥 CONSULTA NO BANCO (CORRIGIDA)
     // -----------------------------
     const contribuicoes = await Contribuicao.findAll({
       where,
       include: [
-        { model: TipoContribuicao, attributes: ['id', 'nome'] },
-        { model: Membros, attributes: ['id', 'nome'] }
+        {
+          model: TipoContribuicao,
+          attributes: ['id', 'nome'],
+          required: false // pode continuar opcional
+        },
+        {
+          model: Membros,
+          attributes: ['id', 'nome'],
+          required: true // 🔥 ESSENCIAL: remove contribuições sem membro (Sem Membro)
+        }
       ],
       order: [['data', 'DESC']],
     });
@@ -2504,9 +2525,15 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao buscar contribuições:', error);
-    return res.status(500).json({ message: 'Erro ao buscar contribuições' });
+    return res.status(500).json({
+      message: 'Erro ao buscar contribuições',
+      error: error.message
+    });
   }
 });
+
+
+
 
 
 
