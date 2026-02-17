@@ -2407,15 +2407,57 @@ router.delete('/tipos-contribuicao/:id', async (req, res) => {
 
 
 
+// Rota - Lançar nova contribuição com dados do auth (Sede/Filial)
+router.post('/contribuicoes', auth, async (req, res) => {
+  try {
+    const { valor, data, descricao, MembroId, TipoContribuicaoId, CultoId } = req.body;
+
+    // Validação básica
+    if (!valor || !data || !TipoContribuicaoId) {
+      return res.status(400).json({
+        message: 'Valor, data e tipo de contribuição são obrigatórios.'
+      });
+    }
+
+    // Pega os dados do usuário logado (via middleware auth)
+    const { SedeId, FilhalId } = req.usuario;
+
+    // Cria a contribuição já associada ao contexto correto
+    const contribuicao = await Contribuicao.create({
+      valor: parseFloat(valor),               // garante que é numérico
+      data: new Date(data),                   // normaliza a data
+      descricao: descricao?.trim() || null,   // opcional
+      MembroId: MembroId || null,             // opcional
+      TipoContribuicaoId,                     // obrigatório
+      CultoId: CultoId || null,               // opcional
+      SedeId: SedeId || null,
+      FilhalId: FilhalId || null
+    });
+
+    return res.status(201).json({
+      message: 'Contribuição lançada com sucesso!',
+      contribuicao
+    });
+
+  } catch (error) {
+    console.error('Erro ao lançar contribuição:', error);
+    return res.status(500).json({
+      message: 'Erro ao lançar contribuição.',
+      error: error.message
+    });
+  }
+});
+
+
+const { Op } = require('sequelize');
+
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
 
   const where = {};
 
   try {
-    // -----------------------------
     // 🔎 FILTRO POR DATAS
-    // -----------------------------
     if (startDate && endDate) {
       where.data = {
         [Op.between]: [
@@ -2425,23 +2467,18 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       };
     }
 
-    // -----------------------------
-    // 🔎 FILTRO POR TIPO DE CONTRIBUIÇÃO
-    // -----------------------------
-    if (tipoId) {
-      where.TipoContribuicaoId = tipoId;
+    // 🔎 FILTROS OPCIONAIS
+    if (tipoId) where.TipoContribuicaoId = tipoId;
+    if (membroId) where.MembroId = membroId;
+
+    // 🔥 CORREÇÃO INTELIGENTE:
+    // Se está filtrando por tipo (ex: Dízimo) e NÃO é um relatório geral,
+    // remove contribuições sem membro para evitar "Sem Membro"
+    if (tipoId && !membroId) {
+      where.MembroId = { [Op.ne]: null };
     }
 
-    // -----------------------------
-    // 🔎 FILTRO POR MEMBRO (OPCIONAL)
-    // -----------------------------
-    if (membroId) {
-      where.MembroId = membroId;
-    }
-
-    // -----------------------------
-    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILIAL)
-    // -----------------------------
+    // 🔐 FILTRO HIERÁRQUICO
     const { SedeId, FilhalId } = req.usuario;
 
     if (FilhalId) {
@@ -2450,9 +2487,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       where.SedeId = SedeId;
     }
 
-    // -----------------------------
-    // 📥 CONSULTA NO BANCO (CORRIGIDA PARA OFERTAS SEM MEMBRO)
-    // -----------------------------
     const contribuicoes = await Contribuicao.findAll({
       where,
       include: [
@@ -2463,7 +2497,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
         {
           model: Membros,
           attributes: ['id', 'nome'],
-          required: false // 🔥 IMPORTANTE: permite contribuições sem membro (ex: Ofertas)
+          required: false // 👈 ESSENCIAL
         }
       ],
       order: [['data', 'DESC']]
@@ -2475,91 +2509,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     console.error('Erro ao buscar contribuições:', error);
     return res.status(500).json({
       message: 'Erro ao buscar contribuições'
-    });
-  }
-});
-
-
-
-const { Op } = require('sequelize');
-
-// Rota - Listar contribuições filtradas pelo usuário logado (Sede/Filial)
-router.get('/lista/contribuicoes', auth, async (req, res) => {
-  const { startDate, endDate, tipoId, membroId } = req.query;
-
-  const where = {};
-
-  try {
-    // -----------------------------
-    // 🔎 FILTRO POR DATAS
-    // -----------------------------
-    if (startDate && endDate) {
-      where.data = {
-        [Op.between]: [
-          new Date(`${startDate}T00:00:00`),
-          new Date(`${endDate}T23:59:59`)
-        ]
-      };
-    }
-
-    // -----------------------------
-    // 🔎 FILTROS OPCIONAIS
-    // -----------------------------
-    if (tipoId) {
-      where.TipoContribuicaoId = tipoId;
-    }
-
-    if (membroId) {
-      where.MembroId = membroId;
-    } else {
-      // 🔥 IMPEDIR "SEM MEMBRO" NO RELATÓRIO
-      where.MembroId = {
-        [Op.ne]: null
-      };
-    }
-
-    // -----------------------------
-    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILIAL)
-    // -----------------------------
-    const { SedeId, FilialId, FilhalId } = req.usuario;
-
-    // Caso o teu sistema esteja usando "FilhalId" por erro de digitação,
-    // ele ainda funcionará sem quebrar
-    const filial = FilialId || FilhalId;
-
-    if (filial) {
-      where.FilialId = filial;
-    } else if (SedeId) {
-      where.SedeId = SedeId;
-    }
-
-    // -----------------------------
-    // 📥 CONSULTA NO BANCO (CORRIGIDA)
-    // -----------------------------
-    const contribuicoes = await Contribuicao.findAll({
-      where,
-      include: [
-        {
-          model: TipoContribuicao,
-          attributes: ['id', 'nome'],
-          required: false // pode continuar opcional
-        },
-        {
-          model: Membros,
-          attributes: ['id', 'nome'],
-          required: true // 🔥 ESSENCIAL: remove contribuições sem membro (Sem Membro)
-        }
-      ],
-      order: [['data', 'DESC']],
-    });
-
-    return res.status(200).json(contribuicoes);
-
-  } catch (error) {
-    console.error('Erro ao buscar contribuições:', error);
-    return res.status(500).json({
-      message: 'Erro ao buscar contribuições',
-      error: error.message
     });
   }
 });
