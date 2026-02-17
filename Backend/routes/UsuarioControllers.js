@@ -2426,13 +2426,21 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     }
 
     // -----------------------------
-    // 🔎 FILTROS OPCIONAIS
+    // 🔎 FILTRO POR TIPO DE CONTRIBUIÇÃO
     // -----------------------------
-    if (tipoId) where.TipoContribuicaoId = tipoId;
-    if (membroId) where.MembroId = membroId;
+    if (tipoId) {
+      where.TipoContribuicaoId = tipoId;
+    }
 
     // -----------------------------
-    // 🔐 FILTRO HIERÁRQUICO
+    // 🔎 FILTRO POR MEMBRO (OPCIONAL)
+    // -----------------------------
+    if (membroId) {
+      where.MembroId = membroId;
+    }
+
+    // -----------------------------
+    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILIAL)
     // -----------------------------
     const { SedeId, FilhalId } = req.usuario;
 
@@ -2443,7 +2451,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     }
 
     // -----------------------------
-    // 📥 CONSULTA NO BANCO (CORRIGIDA)
+    // 📥 CONSULTA NO BANCO (CORRIGIDA PARA OFERTAS SEM MEMBRO)
     // -----------------------------
     const contribuicoes = await Contribuicao.findAll({
       where,
@@ -2455,7 +2463,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
         {
           model: Membros,
           attributes: ['id', 'nome'],
-          required: true // 🔥 CORREÇÃO: remove contribuições sem membro ("Sem Membro")
+          required: false // 🔥 IMPORTANTE: permite contribuições sem membro (ex: Ofertas)
         }
       ],
       order: [['data', 'DESC']]
