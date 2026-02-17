@@ -2455,12 +2455,10 @@ const { Op } = require('sequelize');
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
 
-  const where = {};
-
   try {
-    // -----------------------------
-    // 🔎 FILTRO POR DATAS
-    // -----------------------------
+    const where = {};
+
+    // 📅 FILTRO POR DATAS
     if (startDate && endDate) {
       where.data = {
         [Op.between]: [
@@ -2470,15 +2468,11 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       };
     }
 
-    // -----------------------------
     // 🔎 FILTROS OPCIONAIS
-    // -----------------------------
     if (tipoId) where.TipoContribuicaoId = tipoId;
     if (membroId) where.MembroId = membroId;
 
-    // -----------------------------
     // 🔐 FILTRO HIERÁRQUICO
-    // -----------------------------
     const { SedeId, FilhalId } = req.usuario;
 
     if (FilhalId) {
@@ -2487,39 +2481,32 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       where.SedeId = SedeId;
     }
 
-    // -----------------------------
-    // 🧠 LÓGICA INTELIGENTE DO INCLUDE
-    // -----------------------------
-    const includeMembro = {
-      model: Membros,
-      attributes: ['id', 'nome'],
-      required: false // 🔥 AGORA PERMITE COM E SEM MEMBRO
-    };
-
     const contribuicoes = await Contribuicao.findAll({
       where,
+      distinct: true, // ⭐ EVITA DUPLICAÇÃO DE LINHAS
+      attributes: [
+        'id',
+        'valor',
+        'data',
+        'MembroId',
+        'TipoContribuicaoId'
+      ],
       include: [
         {
           model: TipoContribuicao,
-          attributes: ['id', 'nome']
+          attributes: ['id', 'nome'],
+          required: true // tipo SEMPRE deve existir
         },
-        includeMembro
+        {
+          model: Membros,
+          attributes: ['id', 'nome'],
+          required: false // permite ofertas sem membro
+        }
       ],
       order: [['data', 'DESC']]
     });
 
-    // -----------------------------
-    // 🧹 OPCIONAL: LIMPAR "Sem Membro"
-    // (Só se for dízimo)
-    // -----------------------------
-    let resultado = contribuicoes;
-
-    if (tipoId) {
-      // Aqui podes ajustar se quiseres regras específicas por tipo
-      resultado = contribuicoes;
-    }
-
-    return res.status(200).json(resultado);
+    return res.status(200).json(contribuicoes);
 
   } catch (error) {
     console.error('Erro ao buscar contribuições:', error);
