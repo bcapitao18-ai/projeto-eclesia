@@ -8,9 +8,10 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 app.use(cors({
-  origin: 'http://168.231.112.34:3000', // IP da VPS onde o frontend vai rodar
+  origin: 'http://localhost:3000',
   credentials: true
 }));
+
 
 
 
@@ -128,10 +129,10 @@ const TipoCultos = require("./modells/TipoCulto");
     console.log('✅ Conectado ao banco de dados com sucesso.');
     await sequelize.sync({ force: false });
 
-    // Altera para 0.0.0.0 para aceitar conexões externas
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Servidor rodando em http://0.0.0.0:${PORT}`);
-    });
+   app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+});
+
 
   } catch (err) {
     console.error('❌ Erro ao conectar ao banco de dados:', err);

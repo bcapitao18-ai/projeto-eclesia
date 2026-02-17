@@ -3,8 +3,9 @@ import axios from 'axios';
 
 
 const api = axios.create({
-  baseURL: 'http://168.231.112.34:8000', // URL do backend na VPS
+  baseURL: 'http://localhost:8000',
 });
+
 
 // Interceptor para enviar o token automaticamente em todas as requisições
 api.interceptors.request.use(
