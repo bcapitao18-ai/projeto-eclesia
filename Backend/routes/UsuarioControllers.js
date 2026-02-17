@@ -2452,69 +2452,131 @@ router.post('/contribuicoes', auth, async (req, res) => {
 const { Op } = require('sequelize');
 
 
+
+// Rota - Listar contribuições filtradas pelo usuário logado (SEM INCLUDE)
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
 
   try {
     const where = {};
 
-    // 📅 FILTRO POR DATAS
+    // ---------------------------------
+    // 🔎 FILTRO POR DATAS (campo é DATE)
+    // ---------------------------------
     if (startDate && endDate) {
       where.data = {
-        [Op.between]: [
-          `${startDate} 00:00:00`,
-          `${endDate} 23:59:59`
-        ]
+        [Op.between]: [startDate, endDate]
       };
     }
 
+    // ---------------------------------
     // 🔎 FILTROS OPCIONAIS
-    if (tipoId) where.TipoContribuicaoId = tipoId;
-    if (membroId) where.MembroId = membroId;
+    // ---------------------------------
+    if (tipoId) {
+      where.TipoContribuicaoId = tipoId;
+    }
 
-    // 🔐 FILTRO HIERÁRQUICO
+    if (membroId) {
+      where.MembroId = membroId;
+    }
+
+    // 🔥 Remove contribuições sem membro
+    where.MembroId = {
+      [Op.ne]: null
+    };
+
+    // ---------------------------------
+    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILHAL)
+    // ---------------------------------
     const { SedeId, FilhalId } = req.usuario;
 
     if (FilhalId) {
-      where.FilhalId = FilhalId;
+      where.FilhalId = FilhalId; // exatamente como está no banco
     } else if (SedeId) {
       where.SedeId = SedeId;
     }
 
+    // ---------------------------------
+    // 📥 BUSCAR CONTRIBUIÇÕES (SEM JOIN)
+    // ---------------------------------
     const contribuicoes = await Contribuicao.findAll({
       where,
-      distinct: true, // ⭐ EVITA DUPLICAÇÃO DE LINHAS
-      attributes: [
-        'id',
-        'valor',
-        'data',
-        'MembroId',
-        'TipoContribuicaoId'
-      ],
-      include: [
-        {
-          model: TipoContribuicao,
-          attributes: ['id', 'nome'],
-          required: true // tipo SEMPRE deve existir
-        },
-        {
-          model: Membros,
-          attributes: ['id', 'nome'],
-          required: false // permite ofertas sem membro
-        }
-      ],
-      order: [['data', 'DESC']]
+      order: [['data', 'DESC']],
+      raw: true
     });
 
-    return res.status(200).json(contribuicoes);
+    // Se não houver dados, retorna vazio
+    if (!contribuicoes.length) {
+      return res.status(200).json([]);
+    }
+
+    // ---------------------------------
+    // 📦 PEGAR IDS ÚNICOS PARA BUSCAS MANUAIS
+    // ---------------------------------
+    const membrosIds = [
+      ...new Set(contribuicoes.map(c => c.MembroId).filter(Boolean))
+    ];
+
+    const tiposIds = [
+      ...new Set(contribuicoes.map(c => c.TipoContribuicaoId).filter(Boolean))
+    ];
+
+    // ---------------------------------
+    // 👤 BUSCAR MEMBROS
+    // ---------------------------------
+    const membros = await Membros.findAll({
+      where: { id: membrosIds },
+      attributes: ['id', 'nome'],
+      raw: true
+    });
+
+    const membrosMap = {};
+    membros.forEach(m => {
+      membrosMap[m.id] = m.nome;
+    });
+
+    // ---------------------------------
+    // 💰 BUSCAR TIPOS DE CONTRIBUIÇÃO
+    // ---------------------------------
+    const tipos = await TipoContribuicao.findAll({
+      where: { id: tiposIds },
+      attributes: ['id', 'nome'],
+      raw: true
+    });
+
+    const tiposMap = {};
+    tipos.forEach(t => {
+      tiposMap[t.id] = t.nome;
+    });
+
+    // ---------------------------------
+    // 🧠 MONTAR RESPOSTA FINAL (MAP MANUAL)
+    // ---------------------------------
+    const resultado = contribuicoes.map(c => ({
+      id: c.id,
+      valor: c.valor,
+      data: c.data,
+      descricao: c.descricao,
+      MembroId: c.MembroId,
+      TipoContribuicaoId: c.TipoContribuicaoId,
+      membroNome: membrosMap[c.MembroId] || 'Sem Membro',
+      tipoNome: tiposMap[c.TipoContribuicaoId] || 'Sem Tipo',
+      SedeId: c.SedeId,
+      FilhalId: c.FilhalId
+    }));
+
+    return res.status(200).json(resultado);
 
   } catch (error) {
     console.error('Erro ao buscar contribuições:', error);
     return res.status(500).json({
-      message: 'Erro ao buscar contribuições'
+      message: 'Erro ao buscar contribuições',
+      error: error.message
     });
   }
 });
+
+
 
 
 
