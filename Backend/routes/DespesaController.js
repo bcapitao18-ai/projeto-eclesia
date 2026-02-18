@@ -20,10 +20,23 @@ const TipoContribuicao = require("../modells/TipoContribuicao");
 const Despesas = require("../modells/Despesas");
 
 
+
+const Categorias = require("../modells/Categorias");
+
+
+
+const CategoriaDespesas = require("../modells/CategoriaDespesa");
+
+
 const CargoMembro = require("../modells/CargoMembro");
 
 
-const { Op } = require('sequelize');
+const { Op, sequelize} = require('sequelize');
+
+
+
+const { Sequelize} = require('sequelize');
+
 
 
 
@@ -57,44 +70,279 @@ router.get('/lista/despesas', auth, async (req, res) => {
   }
 });
 
-
-
-// POST /despesas - cadastrar nova despesa com dados do usuário logado
+// POST /despesas - cadastrar despesa e vincular à categoria
 router.post('/despesas', auth, async (req, res) => {
   try {
-    const { descricao, valor, data, categoria, tipo, observacao } = req.body;
+    const {
+      descricao,
+      valor,
+      data,
+      tipo,
+      observacao,
+      categoriaId
+    } = req.body;
 
-    // Validação básica
     if (!descricao || !valor || !data || !tipo) {
-      return res.status(400).json({ message: 'Campos obrigatórios não preenchidos.' });
+      return res.status(400).json({
+        message: 'Campos obrigatórios não preenchidos.'
+      });
     }
 
-    // Pega os dados do usuário logado
     const { SedeId, FilhalId } = req.usuario;
 
-    // Criação do registro
+    // 1️⃣ Criar a despesa
     const novaDespesa = await Despesas.create({
       descricao,
       valor,
       data,
-      categoria: categoria || null,
       tipo,
       observacao: observacao || null,
       SedeId: SedeId || null,
       FilhalId: FilhalId || null
     });
 
+    // 2️⃣ Vincular à categoria (tabela intermediária)
+    if (categoriaId) {
+      await CategoriaDespesas.create({
+        DespesaId: novaDespesa.id,
+        CategoriumId: categoriaId // nome EXATO da tua coluna no banco
+      });
+    }
+
     return res.status(201).json({
-      message: 'Despesa cadastrada com sucesso!',
+      message: 'Despesa cadastrada e vinculada à categoria com sucesso!',
       despesa: novaDespesa
     });
+
   } catch (error) {
     console.error('Erro ao cadastrar despesa:', error);
-    return res.status(500).json({ message: 'Erro interno ao cadastrar despesa.' });
+    return res.status(500).json({
+      message: 'Erro interno ao cadastrar despesa.'
+    });
   }
 });
 
 
+
+
+// GET /categorias/:id/despesas - listar despesas de uma categoria
+router.get('/categorias/:id/despesas', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { SedeId, FilhalId } = req.usuario;
+
+    const despesas = await Despesas.findAll({
+      include: [
+        {
+          model: CategoriaDespesas,
+          where: { CategoriumId: id }, // 🔥 tua coluna real do banco
+          attributes: []
+        }
+      ],
+      where: {
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null
+      },
+      order: [['data', 'DESC']]
+    });
+
+    return res.status(200).json({
+      message: 'Despesas da categoria',
+      data: despesas
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar despesas da categoria:', error);
+    return res.status(500).json({
+      message: 'Erro interno ao buscar despesas da categoria.'
+    });
+  }
+});
+
+
+
+// PUT /categorias/:id - atualizar categoria
+router.put('/categorias/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, descricao, ativa } = req.body;
+
+    // Validação básica
+    if (!nome) {
+      return res.status(400).json({
+        message: 'O nome da categoria é obrigatório.'
+      });
+    }
+
+    const { SedeId, FilhalId } = req.usuario;
+
+    // Buscar categoria garantindo isolamento por sede/filial
+    const categoria = await Categorias.findOne({
+      where: {
+        id,
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null
+      }
+    });
+
+    if (!categoria) {
+      return res.status(404).json({
+        message: 'Categoria não encontrada.'
+      });
+    }
+
+    // Verificar duplicidade de nome na mesma sede/filial (exceto ela mesma)
+    const categoriaDuplicada = await Categorias.findOne({
+      where: {
+        nome,
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null
+      }
+    });
+
+    if (categoriaDuplicada && categoriaDuplicada.id !== categoria.id) {
+      return res.status(400).json({
+        message: 'Já existe outra categoria com esse nome.'
+      });
+    }
+
+    // Atualizar dados
+    categoria.nome = nome;
+    categoria.descricao = descricao || null;
+
+    // só atualiza ativa se vier no payload
+    if (typeof ativa !== 'undefined') {
+      categoria.ativa = ativa;
+    }
+
+    await categoria.save();
+
+    return res.json({
+      message: 'Categoria atualizada com sucesso!',
+      categoria
+    });
+
+  } catch (error) {
+    console.error('Erro ao atualizar categoria:', error);
+    return res.status(500).json({
+      message: 'Erro interno ao atualizar categoria.'
+    });
+  }
+});
+
+
+// GET /categorias/despesas - listar categorias com total de despesas
+router.get('/categorias/despesas', auth, async (req, res) => {
+  try {
+    const { SedeId, FilhalId } = req.usuario;
+
+    const categorias = await Categorias.findAll({
+      where: {
+        ativa: 1,
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null
+      },
+      include: [
+        {
+          model: CategoriaDespesas,
+          attributes: [],
+          include: [
+            {
+              model: Despesas,
+              attributes: []
+            }
+          ]
+        }
+      ],
+      attributes: [
+        'id',
+        'nome',
+        'descricao',
+        [
+          Sequelize.fn(
+            'COALESCE',
+            Sequelize.fn(
+              'SUM',
+              Sequelize.col('CategoriaDespesas->Despesa.valor')
+            ),
+            0
+          ),
+          'totalDespesas'
+        ]
+      ],
+      group: ['Categoria.id'], // ✅ CORREÇÃO PRINCIPAL
+      order: [['nome', 'ASC']],
+      subQuery: false
+    });
+
+    return res.status(200).json({
+      message: 'Categorias com total de despesas',
+      data: categorias
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar totais por categoria:', error);
+    return res.status(500).json({
+      message: 'Erro interno ao buscar categorias com totais.'
+    });
+  }
+});
+
+
+
+
+// POST /categorias - cadastrar nova categoria/natureza
+router.post('/categorias', auth, async (req, res) => {
+  try {
+    const { nome, descricao } = req.body;
+
+    // Validação básica
+    if (!nome) {
+      return res.status(400).json({
+        message: 'O nome da categoria é obrigatório.'
+      });
+    }
+
+    // Dados do usuário logado (multi-sede)
+    const { SedeId, FilhalId } = req.usuario;
+
+    // Verificar se já existe categoria com mesmo nome na mesma sede/filial
+    const categoriaExistente = await Categorias.findOne({
+      where: {
+        nome,
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null
+      }
+    });
+
+    if (categoriaExistente) {
+      return res.status(400).json({
+        message: 'Já existe uma categoria com esse nome.'
+      });
+    }
+
+    // Criar categoria
+    const novaCategoria = await Categorias.create({
+      nome,
+      descricao: descricao || null,
+      SedeId: SedeId || null,
+      FilhalId: FilhalId || null,
+      ativa: true
+    });
+
+    return res.status(201).json({
+      message: 'Categoria criada com sucesso!',
+      categoria: novaCategoria
+    });
+
+  } catch (error) {
+    console.error('Erro ao criar categoria:', error);
+    return res.status(500).json({
+      message: 'Erro interno ao criar categoria.'
+    });
+  }
+});
+ 
 
 
 

@@ -33,13 +33,7 @@ import Testemunhos from '../components/Testemunhos';
 import Contato from '../components/Contato';
 import Servicos from '../components/servicos';
 import Aniversarios from '../pages/Notificacoes';
-import Atendimento from '../components/FormAtendimento'; // <-- nova página
 
-// Novas rotas públicas de Atendimento e Compromisso Pastoral
-import GestaoAtendimento from '../components/TabelaAtendimento'; // <-- rota pública
-import GestaoCompromisso from '../components/TabelaCompromisso'; // <-- rota pública
-
-import FormComprimisso from '../components/FormCompromisso'; // <-- rota pública
 
 // Dashboard agora é público
 import Dashboard from '../pages/Dashboard';
@@ -48,8 +42,7 @@ import Dashboard from '../pages/Dashboard';
 import Salarios from '../pages/Salarios';
 import TabelaSalarios from '../components/TabelaSalarios'; // <-- nova página
 
-// Importa o novo componente de Dashboard de Eventos
-import EventosDashboard from '../components/Dasheventos'; // <-- Novo componente para /dasheventos
+
 
 
 // Importa o novo componente de Dashboard de Eventos
@@ -135,10 +128,10 @@ export default function AppRoutes() {
         <Route path="/tabelaSalarios" element={<TabelaSalarios />} /> {/* NOVA ROTA PÚBLICA */}
         <Route path="/dashboard" element={<Dashboard />} /> {/* agora é público */}
         <Route path="/aniversarios" element={<Aniversarios />} /> {/* rota pública */}
-        <Route path="/atendimento" element={<Atendimento />} /> {/* rota pública */}
+       
         <Route path="/TabelaCulto" element={<TabelaCulto />} /> {/* NOVA ROTA PÚBLICA */}
-        <Route path="/gestaoAtendimento" element={<GestaoAtendimento />} /> {/* rota pública */}
-        <Route path="/gestaoCompromisso" element={<GestaoCompromisso />} /> {/* rota pública */}
+      
+        
 
   <Route path="/cadastro/membro" element={< CadastroMembros />} /> {/* rota pública */}
 
@@ -148,11 +141,7 @@ export default function AppRoutes() {
 
   <Route path="/criar/conta/membro" element={< CriarContaMembro />} /> {/* rota pública */}
 
-        {/* Nova Rota Pública para o Dashboard de Eventos */}
-        <Route path="/dasheventos" element={<EventosDashboard />} /> {/* Nova Rota Pública */}
-
-        {/* Nova Rota Pública para o Formulário de Compromissos */}
-        <Route path="/formcomprimissos" element={<FormComprimisso />} /> {/* Nova Rota Pública */}
+     
         
         {/* Rotas protegidas (usuários autenticados) */}
         <Route element={<AuthWrapper><Outlet /></AuthWrapper>}>

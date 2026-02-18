@@ -13,7 +13,7 @@ import { FaBirthdayCake } from "react-icons/fa";
 import { styled } from "@mui/material/styles";
 
 import AniversarianteMes from "../components/AniversarioMes";
-import NotificacoesEventos from "../components/NotificacaoAtendimento";
+
 
 /* 🌌 FUNDO PREMIUM COM EFEITOS DE LUZ */
 const Background = styled(Box)(({ theme }) => ({
@@ -388,10 +388,7 @@ return ( <Background> <FloatingLights />
         )}
       </Box>
 
-      {/* 🔔 Componentes SEMPRE visíveis, mesmo sem aniversários */}
-      <Box sx={{ width: "100%", mt: 8 }}>
-        <NotificacoesEventos />
-      </Box>
+    
 
       <Box sx={{ width: "100%", mt: 8 }}>
         <AniversarianteMes />

@@ -9,11 +9,7 @@ import { Box, Typography, Paper, Grid, CircularProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import Graficos from "../components/Graficos";
-import TabelaAtendimento from "../components/TabelaAtendimento";
-import TabelaComprimisso from "../components/TabelaCompromisso";
-import Compromissos from "../components/FormCompromisso";
-import ProgramaDoCulto from "../components/ProgramaCulto";
-import TabelaProgramaDoCulto from "../components/TabelaCultoProgramado";
+
 import Crincas from "../components/Criancas";
 /* ---------- ESTILOS ---------- */
 const DashboardCard = styled(Paper)(({ theme }) => ({

@@ -1,55 +1,53 @@
-// src/components/FormDespesa.jsx
+// src/components/FormCategoria.jsx
 import React, { useState } from 'react';
 import {
   TextField,
   Button,
-  MenuItem,
   Box,
-  InputAdornment,
   Typography,
+  Switch,
+  FormControlLabel,
   Paper,
   Divider,
   Chip
 } from '@mui/material';
-import { AttachMoney, CalendarToday, Notes } from '@mui/icons-material';
+import { Category } from '@mui/icons-material';
 import api from '../api/axiosConfig';
 
-export default function FormDespesa({
-  despesa = null,
-  categoriaId = null,
-  onSuccess,
-  onCancel
-}) {
-  const [descricao, setDescricao] = useState(despesa?.descricao || '');
-  const [valor, setValor] = useState(despesa?.valor || '');
-  const [data, setData] = useState(despesa?.data || '');
-  const [tipo, setTipo] = useState(despesa?.tipo || '');
-  const [observacao, setObservacao] = useState(despesa?.observacao || '');
+export default function FormCategoria({ categoria = null, onSuccess, onCancel }) {
+  const [nome, setNome] = useState(categoria?.nome || '');
+  const [descricao, setDescricao] = useState(categoria?.descricao || '');
+  const [ativa, setAtiva] = useState(
+    categoria?.ativa !== undefined ? categoria.ativa : true
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!nome.trim()) {
+      return alert('O nome da categoria é obrigatório.');
+    }
+
     setLoading(true);
 
     const payload = {
-      descricao,
-      valor,
-      data,
-      tipo,
-      observacao: observacao || null,
-      categoriaId
+      nome,
+      descricao: descricao || null,
+      ativa
     };
 
     try {
-      if (despesa) {
-        await api.put(`/despesas/${despesa.id}`, payload);
+      if (categoria) {
+        await api.put(`/categorias/${categoria.id}`, payload);
       } else {
-        await api.post('/despesas', payload);
+        await api.post('/categorias', payload);
       }
+
       onSuccess();
     } catch (error) {
-      console.error('Erro ao salvar despesa:', error);
-      alert('Erro ao salvar despesa.');
+      console.error('Erro ao salvar categoria:', error);
+      alert('Erro ao salvar categoria.');
     } finally {
       setLoading(false);
     }
@@ -92,7 +90,8 @@ export default function FormDespesa({
         {/* HEADER PREMIUM */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Chip
-            label="Gestão Financeira"
+            icon={<Category sx={{ fontSize: 18 }} />}
+            label="Organização Financeira"
             sx={{
               mb: 2,
               fontWeight: 600,
@@ -110,7 +109,7 @@ export default function FormDespesa({
               color: '#0f172a'
             }}
           >
-            {despesa ? 'Editar Despesa' : 'Nova Despesa'}
+            {categoria ? 'Editar Categoria' : 'Nova Categoria'}
           </Typography>
 
           <Typography
@@ -121,7 +120,7 @@ export default function FormDespesa({
               fontWeight: 400
             }}
           >
-            Registe e controle os seus gastos com precisão e elegância
+            Organize suas despesas com categorias elegantes e inteligentes
           </Typography>
         </Box>
 
@@ -133,101 +132,69 @@ export default function FormDespesa({
         />
 
         <Box component="form" onSubmit={handleSubmit}>
-          {/* DESCRIÇÃO */}
+          {/* NOME */}
           <TextField
-            label="Descrição da Despesa"
+            label="Nome da Categoria"
             placeholder="Ex: Alimentação, Transporte, Internet..."
             fullWidth
             required
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            sx={premiumInput}
+          />
+
+          {/* DESCRIÇÃO */}
+          <TextField
+            label="Descrição (Opcional)"
+            placeholder="Descreva o objetivo desta categoria..."
+            fullWidth
+            multiline
+            rows={3}
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             sx={premiumInput}
           />
 
-          {/* VALOR EM KZ */}
-          <TextField
-            label="Valor"
-            placeholder="0.00"
-            fullWidth
-            required
-            type="number"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Box
-                    sx={{
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      background: '#f1f5f9',
-                      px: 1.2,
-                      py: 0.5,
-                      borderRadius: 1.5,
-                      fontSize: 13
-                    }}
-                  >
-                    Kz
-                  </Box>
-                </InputAdornment>
-              )
+          {/* STATUS ATIVO */}
+          <Box
+            sx={{
+              mt: 2,
+              mb: 3,
+              p: 2,
+              borderRadius: 3,
+              background: '#f8fafc',
+              border: '1px solid rgba(15,23,42,0.06)'
             }}
-            sx={premiumInput}
-          />
-
-          {/* DATA */}
-          <TextField
-            label="Data da Despesa"
-            type="date"
-            fullWidth
-            required
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <CalendarToday sx={{ color: '#6366f1', fontSize: 20 }} />
-                </InputAdornment>
-              )
-            }}
-            sx={premiumInput}
-          />
-
-          {/* TIPO */}
-          <TextField
-            label="Tipo de Despesa"
-            select
-            fullWidth
-            required
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-            sx={premiumInput}
           >
-            <MenuItem value="Fixa">Despesa Fixa</MenuItem>
-            <MenuItem value="Variável">Despesa Variável</MenuItem>
-          </TextField>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={ativa}
+                  onChange={(e) => setAtiva(e.target.checked)}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: '#6366f1'
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: '#6366f1'
+                    }
+                  }}
+                />
+              }
+              label={
+                <Typography
+                  sx={{
+                    fontWeight: 600,
+                    color: '#0f172a'
+                  }}
+                >
+                  Categoria ativa
+                </Typography>
+              }
+            />
+          </Box>
 
-          {/* OBSERVAÇÃO */}
-          <TextField
-            label="Observação (Opcional)"
-            placeholder="Detalhes adicionais sobre a despesa..."
-            fullWidth
-            multiline
-            rows={3}
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Notes sx={{ color: '#94a3b8', fontSize: 20 }} />
-                </InputAdornment>
-              )
-            }}
-            sx={premiumInput}
-          />
-
-          {/* BOTÕES PREMIUM */}
+          {/* BOTÕES */}
           <Box
             sx={{
               display: 'flex',
@@ -275,7 +242,11 @@ export default function FormDespesa({
                 }
               }}
             >
-              {despesa ? 'Atualizar Despesa' : 'Cadastrar Despesa'}
+              {loading
+                ? 'Salvando...'
+                : categoria
+                ? 'Atualizar Categoria'
+                : 'Cadastrar Categoria'}
             </Button>
           </Box>
         </Box>
