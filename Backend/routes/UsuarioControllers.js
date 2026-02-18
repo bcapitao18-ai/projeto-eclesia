@@ -2452,9 +2452,7 @@ router.post('/contribuicoes', auth, async (req, res) => {
 const { Op } = require('sequelize');
 
 
-
-
-// Rota - Listar contribuições filtradas (SEM INCLUDE - anti duplicação)
+// Rota - Listar contribuições filtradas (COMPATÍVEL COM FRONTEND)
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
 
@@ -2491,30 +2489,30 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     const filial = FilialId || FilhalId;
 
     if (filial) {
-      where.FilhalId = filial; // ⚠️ seu banco usa FilhalId
+      where.FilhalId = filial; // conforme teu banco
     } else if (SedeId) {
       where.SedeId = SedeId;
     }
 
     // -----------------------------
-    // 📥 BUSCAR CONTRIBUIÇÕES (SEM JOIN)
+    // 📥 BUSCAR CONTRIBUIÇÕES (SEM INCLUDE = SEM DUPLICAÇÃO)
     // -----------------------------
-    const contribuicoes = await Contribuicao.findAll({
+    const contribuicoesDB = await Contribuicao.findAll({
       where,
       order: [['data', 'DESC']],
-      raw: true // 🔥 evita duplicação de instâncias
+      raw: true
     });
 
-    if (!contribuicoes.length) {
-      return res.status(200).json([]);
+    if (!contribuicoesDB || contribuicoesDB.length === 0) {
+      return res.status(200).json([]); // ⚠️ FRONTEND ESPERA ARRAY
     }
 
     // -----------------------------
-    // 📦 PEGAR IDS ÚNICOS (para evitar múltiplas queries)
+    // 📦 IDS ÚNICOS
     // -----------------------------
     const membrosIds = [
       ...new Set(
-        contribuicoes
+        contribuicoesDB
           .map(c => c.MembroId)
           .filter(id => id !== null)
       )
@@ -2522,7 +2520,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
 
     const tiposIds = [
       ...new Set(
-        contribuicoes
+        contribuicoesDB
           .map(c => c.TipoContribuicaoId)
           .filter(id => id !== null)
       )
@@ -2531,23 +2529,27 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     // -----------------------------
     // 👥 BUSCA MANUAL DOS MEMBROS
     // -----------------------------
-    const membros = await Membros.findAll({
-      where: { id: membrosIds },
-      attributes: ['id', 'nome'],
-      raw: true
-    });
+    const membros = membrosIds.length > 0
+      ? await Membros.findAll({
+          where: { id: membrosIds },
+          attributes: ['id', 'nome'],
+          raw: true
+        })
+      : [];
 
     // -----------------------------
     // 🏷️ BUSCA MANUAL DOS TIPOS
     // -----------------------------
-    const tipos = await TipoContribuicao.findAll({
-      where: { id: tiposIds },
-      attributes: ['id', 'nome'],
-      raw: true
-    });
+    const tipos = tiposIds.length > 0
+      ? await TipoContribuicao.findAll({
+          where: { id: tiposIds },
+          attributes: ['id', 'nome'],
+          raw: true
+        })
+      : [];
 
     // -----------------------------
-    // 🧠 CRIAR MAPAS (SUPER RÁPIDO)
+    // 🧠 MAPAS RÁPIDOS
     // -----------------------------
     const membrosMap = {};
     membros.forEach(m => {
@@ -2560,41 +2562,28 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
 
     // -----------------------------
-    // 🔄 MONTAR RESPOSTA FINAL (SEM DUPLICAÇÃO)
+    // 🔥 RESULTADO FINAL (MESMO FORMATO DO INCLUDE)
     // -----------------------------
-    const resultado = contribuicoes.map(c => {
-      const nomeMembro = c.MembroId
-        ? (membrosMap[c.MembroId] || 'Sem Membro')
-        : 'Sem Membro';
-
-      const nomeTipo = c.TipoContribuicaoId
-        ? (tiposMap[c.TipoContribuicaoId] || 'Tipo Removido')
-        : 'Sem Tipo';
-
+    const contribuicoes = contribuicoesDB.map(c => {
       return {
-        id: c.id,
+        ...c,
         valor: Number(c.valor),
-        data: c.data,
-        descricao: c.descricao,
-        MembroId: c.MembroId,
-        TipoContribuicaoId: c.TipoContribuicaoId,
-        membroNome: nomeMembro,
-        tipoNome: nomeTipo
+        TipoContribuicao: {
+          id: c.TipoContribuicaoId,
+          nome: tiposMap[c.TipoContribuicaoId] || 'Sem Tipo'
+        },
+        Membro: {
+          id: c.MembroId,
+          nome: c.MembroId
+            ? (membrosMap[c.MembroId] || 'Sem Membro')
+            : 'Sem Membro'
+        }
       };
     });
 
-    // -----------------------------
-    // 💰 TOTAL REAL (SEM INFLAR)
-    // -----------------------------
-    const total = resultado.reduce((sum, item) => {
-      return sum + Number(item.valor || 0);
-    }, 0);
-
-    return res.status(200).json({
-      total,
-      quantidade: resultado.length,
-      contribuicoes: resultado
-    });
+    // ⚠️ MUITO IMPORTANTE:
+    // Retornar ARRAY puro (igual antes)
+    return res.status(200).json(contribuicoes);
 
   } catch (error) {
     console.error('Erro ao buscar contribuições:', error);
@@ -2604,8 +2593,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
   }
 });
-
-
 
 
 
