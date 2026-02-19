@@ -18,6 +18,7 @@ import {
   Card,
   CardContent,
   Divider,
+  TextField,
 } from '@mui/material';
 import { FilterAlt, Summarize, PictureAsPdf } from '@mui/icons-material';
 import { motion } from 'framer-motion';
@@ -41,9 +42,22 @@ export default function RelatorioDespesas() {
   const [despesas, setDespesas] = useState([]);
   const [total, setTotal] = useState(0);
 
+  // NOVOS ESTADOS PARA PERSONALIZAR
+  const [dataInicial, setDataInicial] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+  const [dataFinal, setDataFinal] = useState(dayjs().format('YYYY-MM-DD'));
+
   const calcularPeriodo = (p) => {
     const agora = dayjs();
     let inicio;
+
+    // SE FOR PERSONALIZADO, USA AS DATAS MANUAIS
+    if (p === 'personalizado') {
+      return {
+        start: dataInicial,
+        end: dataFinal,
+      };
+    }
+
     switch (p) {
       case 'hoje': inicio = agora.startOf('day'); break;
       case 'semana': inicio = agora.startOf('week'); break;
@@ -53,6 +67,7 @@ export default function RelatorioDespesas() {
       case 'ano': inicio = agora.startOf('year'); break;
       default: inicio = agora.startOf('month');
     }
+
     return { start: inicio.format('YYYY-MM-DD'), end: agora.format('YYYY-MM-DD') };
   };
 
@@ -60,6 +75,7 @@ export default function RelatorioDespesas() {
     setLoading(true);
     try {
       const { start, end } = calcularPeriodo(periodo);
+
       const res = await api.get('/relatorio/despesas', {
         params: {
           startDate: start,
@@ -67,6 +83,7 @@ export default function RelatorioDespesas() {
           tipo: tipo || undefined,
         },
       });
+
       setDespesas(res.data);
       const soma = res.data.reduce((acc, d) => acc + parseFloat(d.valor), 0);
       setTotal(soma);
@@ -156,15 +173,44 @@ export default function RelatorioDespesas() {
             >
               <FormControl sx={{ minWidth: 160 }}>
                 <InputLabel>Período</InputLabel>
-                <Select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
+                <Select
+                  value={periodo}
+                  onChange={(e) => setPeriodo(e.target.value)}
+                >
                   <MenuItem value="hoje">Hoje</MenuItem>
                   <MenuItem value="semana">Semana</MenuItem>
                   <MenuItem value="mes">Mês</MenuItem>
                   <MenuItem value="trimestre">Trimestre</MenuItem>
                   <MenuItem value="semestre">Semestre</MenuItem>
                   <MenuItem value="ano">Ano</MenuItem>
+                  <MenuItem value="personalizado">
+                    Personalizar (Escolher datas)
+                  </MenuItem>
                 </Select>
               </FormControl>
+
+              {/* CAMPOS DE DATA APENAS QUANDO FOR PERSONALIZADO */}
+              {periodo === 'personalizado' && (
+                <>
+                  <TextField
+                    label="Data Inicial"
+                    type="date"
+                    value={dataInicial}
+                    onChange={(e) => setDataInicial(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 180 }}
+                  />
+
+                  <TextField
+                    label="Data Final"
+                    type="date"
+                    value={dataFinal}
+                    onChange={(e) => setDataFinal(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 180 }}
+                  />
+                </>
+              )}
 
               <FormControl sx={{ minWidth: 180 }}>
                 <InputLabel>Tipo de Despesa</InputLabel>

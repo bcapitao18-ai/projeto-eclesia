@@ -1,5 +1,5 @@
 // src/components/FormDespesa.jsx
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   TextField,
   Button,
@@ -9,22 +9,28 @@ import {
   Typography,
   Paper,
   Divider,
-  Chip
-} from '@mui/material';
-import { AttachMoney, CalendarToday, Notes } from '@mui/icons-material';
-import api from '../api/axiosConfig';
+  Chip,
+  Stack,
+} from "@mui/material";
+import { CalendarToday, Notes } from "@mui/icons-material";
+import { motion } from "framer-motion";
+import api from "../api/axiosConfig";
+
+const MotionPaper = motion(Paper);
 
 export default function FormDespesa({
   despesa = null,
   categoriaId = null,
   onSuccess,
-  onCancel
+  onCancel,
 }) {
-  const [descricao, setDescricao] = useState(despesa?.descricao || '');
-  const [valor, setValor] = useState(despesa?.valor || '');
-  const [data, setData] = useState(despesa?.data || '');
-  const [tipo, setTipo] = useState(despesa?.tipo || '');
-  const [observacao, setObservacao] = useState(despesa?.observacao || '');
+  const [descricao, setDescricao] = useState(despesa?.descricao || "");
+  const [valor, setValor] = useState(despesa?.valor || "");
+  const [data, setData] = useState(despesa?.data || "");
+  const [tipo, setTipo] = useState(despesa?.tipo || "");
+  const [observacao, setObservacao] = useState(
+    despesa?.observacao || ""
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -37,19 +43,19 @@ export default function FormDespesa({
       data,
       tipo,
       observacao: observacao || null,
-      categoriaId
+      categoriaId,
     };
 
     try {
       if (despesa) {
         await api.put(`/despesas/${despesa.id}`, payload);
       } else {
-        await api.post('/despesas', payload);
+        await api.post("/despesas", payload);
       }
       onSuccess();
     } catch (error) {
-      console.error('Erro ao salvar despesa:', error);
-      alert('Erro ao salvar despesa.');
+      console.error("Erro ao salvar despesa:", error);
+      alert("Erro ao salvar despesa.");
     } finally {
       setLoading(false);
     }
@@ -58,77 +64,93 @@ export default function FormDespesa({
   return (
     <Box
       sx={{
-        minHeight: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        minHeight: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         p: 2,
-        background: 'linear-gradient(180deg, #fafbff 0%, #f4f6fc 100%)'
+        background: `
+          radial-gradient(circle at 0% 0%, rgba(124,58,237,0.12) 0%, transparent 45%),
+          radial-gradient(circle at 100% 0%, rgba(139,92,246,0.10) 0%, transparent 45%),
+          linear-gradient(180deg, #ffffff 0%, #faf7ff 100%)
+        `,
       }}
     >
-      <Paper
+      <MotionPaper
+        initial={{ opacity: 0, y: 40, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
         elevation={0}
         sx={{
-          width: '100%',
-          maxWidth: 560,
+          width: "100%",
+          maxWidth: 620,
           p: 5,
-          borderRadius: 5,
-          background: '#ffffff',
-          border: '1px solid rgba(15,23,42,0.06)',
+          borderRadius: 6,
+          position: "relative",
+          overflow: "hidden",
+          background: "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(25px)",
+          border: "1px solid rgba(139,92,246,0.18)",
           boxShadow: `
-            0 10px 30px rgba(15,23,42,0.04),
-            0 2px 10px rgba(15,23,42,0.03)
+            0 60px 180px rgba(88,28,135,0.25),
+            0 20px 60px rgba(124,58,237,0.15)
           `,
-          transition: 'all 0.35s ease',
-          '&:hover': {
-            boxShadow: `
-              0 20px 60px rgba(15,23,42,0.08),
-              0 8px 25px rgba(15,23,42,0.05)
-            `,
-            transform: 'translateY(-2px)'
-          }
+          "&:before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            borderRadius: 6,
+            background:
+              "radial-gradient(circle at top, rgba(139,92,246,0.12), transparent 60%)",
+            pointerEvents: "none",
+          },
         }}
       >
-        {/* HEADER PREMIUM */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
+        {/* HEADER SURREAL */}
+        <Box sx={{ textAlign: "center", mb: 3, position: "relative" }}>
           <Chip
-            label="Gestão Financeira"
+            label="Gestão Financeira Premium"
             sx={{
               mb: 2,
-              fontWeight: 600,
-              background: 'rgba(99,102,241,0.08)',
-              color: '#6366f1',
-              borderRadius: 2
+              fontWeight: 800,
+              letterSpacing: 0.5,
+              px: 2,
+              py: 2,
+              borderRadius: 3,
+              color: "#6d28d9",
+              background: "rgba(124,58,237,0.08)",
+              border: "1px solid rgba(124,58,237,0.25)",
+              boxShadow: "0 10px 30px rgba(124,58,237,0.15)",
             }}
           />
 
           <Typography
             variant="h4"
             sx={{
-              fontWeight: 800,
-              letterSpacing: '-0.5px',
-              color: '#0f172a'
+              fontWeight: 900,
+              letterSpacing: "-0.8px",
+              color: "#2e1065",
             }}
           >
-            {despesa ? 'Editar Despesa' : 'Nova Despesa'}
+            {despesa ? "Editar Despesa" : "Nova Despesa"}
           </Typography>
 
           <Typography
-            variant="body1"
             sx={{
-              mt: 1,
-              color: '#64748b',
-              fontWeight: 400
+              mt: 1.2,
+              color: "#6b21a8",
+              fontWeight: 500,
+              fontSize: 15,
             }}
           >
-            Registe e controle os seus gastos com precisão e elegância
+            Controle financeiro com precisão e luxo absoluto
           </Typography>
         </Box>
 
         <Divider
           sx={{
             mb: 4,
-            borderColor: 'rgba(15,23,42,0.06)'
+            borderColor: "rgba(139,92,246,0.2)",
           }}
         />
 
@@ -136,15 +158,15 @@ export default function FormDespesa({
           {/* DESCRIÇÃO */}
           <TextField
             label="Descrição da Despesa"
-            placeholder="Ex: Alimentação, Transporte, Internet..."
+            placeholder="Ex: Alimentação, Internet, Transporte..."
             fullWidth
             required
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            sx={premiumInput}
+            sx={surrealInput}
           />
 
-          {/* VALOR EM KZ */}
+          {/* VALOR */}
           <TextField
             label="Valor"
             placeholder="0.00"
@@ -156,23 +178,11 @@ export default function FormDespesa({
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Box
-                    sx={{
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      background: '#f1f5f9',
-                      px: 1.2,
-                      py: 0.5,
-                      borderRadius: 1.5,
-                      fontSize: 13
-                    }}
-                  >
-                    Kz
-                  </Box>
+                  <Box sx={kzBadge}>Kz</Box>
                 </InputAdornment>
-              )
+              ),
             }}
-            sx={premiumInput}
+            sx={surrealInput}
           />
 
           {/* DATA */}
@@ -187,11 +197,16 @@ export default function FormDespesa({
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <CalendarToday sx={{ color: '#6366f1', fontSize: 20 }} />
+                  <CalendarToday
+                    sx={{
+                      color: "#7c3aed",
+                      fontSize: 20,
+                    }}
+                  />
                 </InputAdornment>
-              )
+              ),
             }}
-            sx={premiumInput}
+            sx={surrealInput}
           />
 
           {/* TIPO */}
@@ -202,7 +217,7 @@ export default function FormDespesa({
             required
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
-            sx={premiumInput}
+            sx={surrealInput}
           >
             <MenuItem value="Fixa">Despesa Fixa</MenuItem>
             <MenuItem value="Variável">Despesa Variável</MenuItem>
@@ -220,35 +235,41 @@ export default function FormDespesa({
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Notes sx={{ color: '#94a3b8', fontSize: 20 }} />
+                  <Notes
+                    sx={{
+                      color: "#a78bfa",
+                      fontSize: 20,
+                    }}
+                  />
                 </InputAdornment>
-              )
+              ),
             }}
-            sx={premiumInput}
+            sx={surrealInput}
           />
 
-          {/* BOTÕES PREMIUM */}
-          <Box
+          {/* BOTÕES ULTRA PREMIUM */}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            mt={4}
+            pt={3}
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mt: 4,
-              pt: 3,
-              borderTop: '1px solid rgba(15,23,42,0.06)'
+              borderTop: "1px solid rgba(139,92,246,0.18)",
             }}
           >
             <Button
               onClick={onCancel}
               sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                color: '#64748b',
-                borderRadius: 2,
-                px: 3,
-                '&:hover': {
-                  background: '#f1f5f9'
-                }
+                textTransform: "none",
+                fontWeight: 700,
+                color: "#6b7280",
+                borderRadius: 3,
+                px: 3.5,
+                py: 1.2,
+                "&:hover": {
+                  background: "#faf5ff",
+                },
               }}
             >
               Cancelar
@@ -259,55 +280,79 @@ export default function FormDespesa({
               variant="contained"
               disabled={loading}
               sx={{
-                textTransform: 'none',
-                fontWeight: 700,
+                textTransform: "none",
+                fontWeight: 900,
                 fontSize: 15,
-                px: 5,
-                py: 1.4,
-                borderRadius: 3,
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                boxShadow: '0 10px 25px rgba(99,102,241,0.25)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 18px 40px rgba(99,102,241,0.35)'
-                }
+                px: 5.5,
+                py: 1.6,
+                borderRadius: 4,
+                letterSpacing: 0.3,
+                background:
+                  "linear-gradient(135deg,#6d28d9,#8b5cf6)",
+                boxShadow:
+                  "0 20px 60px rgba(124,58,237,0.45)",
+                transition: "all 0.35s ease",
+                "&:hover": {
+                  background:
+                    "linear-gradient(135deg,#5b21b6,#7c3aed)",
+                  transform: "translateY(-3px) scale(1.02)",
+                  boxShadow:
+                    "0 30px 80px rgba(124,58,237,0.6)",
+                },
               }}
             >
-              {despesa ? 'Atualizar Despesa' : 'Cadastrar Despesa'}
+              {loading
+                ? "Salvando..."
+                : despesa
+                ? "Atualizar Despesa"
+                : "Cadastrar Despesa"}
             </Button>
-          </Box>
+          </Stack>
         </Box>
-      </Paper>
+      </MotionPaper>
     </Box>
   );
 }
 
-const premiumInput = {
-  mb: 2.5,
-  '& .MuiOutlinedInput-root': {
-    borderRadius: 3,
-    background: '#ffffff',
-    fontWeight: 500,
-    transition: 'all 0.25s ease',
-    '& fieldset': {
-      borderColor: 'rgba(15,23,42,0.12)'
-    },
-    '&:hover fieldset': {
-      borderColor: '#6366f1'
-    },
-    '&.Mui-focused fieldset': {
-      borderColor: '#6366f1',
-      borderWidth: '1.5px'
-    }
-  },
-  '& .MuiInputLabel-root': {
+/* INPUT SURREAL ROXO */
+const surrealInput = {
+  mb: 3,
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 3.5,
+    background: "#ffffff",
     fontWeight: 600,
-    color: '#334155'
+    transition: "all 0.25s ease",
+    "& fieldset": {
+      borderColor: "rgba(139,92,246,0.25)",
+    },
+    "&:hover fieldset": {
+      borderColor: "#7c3aed",
+      boxShadow: "0 0 0 3px rgba(124,58,237,0.08)",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#6d28d9",
+      borderWidth: "1.6px",
+      boxShadow: "0 0 0 4px rgba(124,58,237,0.15)",
+    },
   },
-  '& .MuiInputBase-input': {
-    color: '#0f172a',
-    fontWeight: 500
-  }
+  "& .MuiInputLabel-root": {
+    fontWeight: 700,
+    color: "#4c1d95",
+  },
+  "& .MuiInputBase-input": {
+    color: "#1e1b4b",
+    fontWeight: 600,
+  },
+};
+
+/* BADGE KZ LUXO */
+const kzBadge = {
+  fontWeight: 900,
+  color: "#5b21b6",
+  background: "rgba(124,58,237,0.12)",
+  px: 1.4,
+  py: 0.6,
+  borderRadius: 2,
+  fontSize: 13,
+  border: "1px solid rgba(124,58,237,0.3)",
 };

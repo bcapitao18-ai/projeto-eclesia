@@ -1,5 +1,4 @@
-// NOVA VERSÃO COM PESQUISA NO DROPDOWN + RESPONSIVIDADE + ESTILO ELEGANTE
-// copie e substitua o seu arquivo RelatorioContribuicoes.jsx por este
+// NOVA VERSÃO COM PESQUISA IGUAL AO FORM DE FUNCIONÁRIOS (AUTOCOMPLETE) + RESTO INTACTO
 
 import React, { useEffect, useState, useMemo } from 'react';
 import {
@@ -22,6 +21,7 @@ import {
   CardContent,
   Divider,
   TextField,
+  Autocomplete, // 🔥 ADICIONADO
 } from '@mui/material';
 import { FilterAlt, Summarize, PictureAsPdf } from '@mui/icons-material';
 import { motion } from 'framer-motion';
@@ -79,20 +79,12 @@ export default function RelatorioContribuicoes() {
   const [membros, setMembros] = useState([]);
   const [tipoId, setTipoId] = useState('');
   const [membroId, setMembroId] = useState('');
-  const [searchMembro, setSearchMembro] = useState('');
 
   const [startDate, setStartDate] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [loading, setLoading] = useState(false);
   const [contribuicoes, setContribuicoes] = useState([]);
   const [total, setTotal] = useState(0);
-
-  // filtrar membros pelo texto digitado
-  const membrosFiltrados = useMemo(() => {
-    return membros.filter((m) =>
-      m.nome.toLowerCase().includes(searchMembro.toLowerCase())
-    );
-  }, [membros, searchMembro]);
 
   useEffect(() => {
     (async () => {
@@ -116,7 +108,12 @@ export default function RelatorioContribuicoes() {
     setLoading(true);
     try {
       const res = await api.get('/lista/contribuicoes', {
-        params: { startDate, endDate, tipoId: tipoId || undefined, membroId: membroId || undefined },
+        params: {
+          startDate,
+          endDate,
+          tipoId: tipoId || undefined,
+          membroId: membroId || undefined,
+        },
       });
 
       const data = res.data || [];
@@ -159,7 +156,9 @@ export default function RelatorioContribuicoes() {
     }
 
     contribuicoes.forEach((c) => {
-      const mKey = monthKey(c.data || c.createdAt || c.created_at || c.data_contribuicao || new Date());
+      const mKey = monthKey(
+        c.data || c.createdAt || c.created_at || c.data_contribuicao || new Date()
+      );
       if (!monthsArr.includes(mKey)) return;
 
       const membro = c.Membro && c.Membro.id ? c.Membro : null;
@@ -174,7 +173,9 @@ export default function RelatorioContribuicoes() {
 
     return {
       months: monthsArr,
-      tableRows: Object.values(mapa).sort((a, b) => a.nome.localeCompare(b.nome)),
+      tableRows: Object.values(mapa).sort((a, b) =>
+        a.nome.localeCompare(b.nome)
+      ),
     };
   }, [contribuicoes, startDate, endDate]);
 
@@ -182,11 +183,19 @@ export default function RelatorioContribuicoes() {
     const doc = new jsPDF('l', 'pt', 'a4');
     doc.setFontSize(14);
     doc.text('Relatório de Contribuições por Membro / Mês', 40, 40);
-    doc.text(`Período: ${dayjs(startDate).format('DD/MM/YYYY')} - ${dayjs(endDate).format('DD/MM/YYYY')}`, 40, 60);
+    doc.text(
+      `Período: ${dayjs(startDate).format('DD/MM/YYYY')} - ${dayjs(endDate).format('DD/MM/YYYY')}`,
+      40,
+      60
+    );
     doc.text(`Total Geral: ${formatCurrency(total)}`, 40, 80);
 
     const head = [['Membro', ...months.map((m) => monthLabelFromKey(m)), 'Total (Kz)']];
-    const body = tableRows.map((r) => [r.nome, ...months.map((m) => (r.months[m] || 0).toFixed(2)), r.total.toFixed(2)]);
+    const body = tableRows.map((r) => [
+      r.nome,
+      ...months.map((m) => (r.months[m] || 0).toFixed(2)),
+      r.total.toFixed(2),
+    ]);
 
     autoTable(doc, {
       head,
@@ -207,10 +216,16 @@ export default function RelatorioContribuicoes() {
         minHeight: '100vh',
         p: { xs: 1.5, md: 6 },
         background: 'linear-gradient(135deg,#6b78ff 0%, #9c27b0 100%)',
-        display: 'flex', justifyContent: 'center',
+        display: 'flex',
+        justifyContent: 'center',
       }}
     >
-      <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} style={{ width: '100%', maxWidth: 1200 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        style={{ width: '100%', maxWidth: 1200 }}
+      >
         <Card elevation={10} sx={{ borderRadius: 4, overflow: 'hidden', backdropFilter: 'blur(8px)' }}>
           <Box sx={{ p: 3, background: 'linear-gradient(90deg,#2196f3,#9c27b0)' }}>
             <Typography variant="h4" fontWeight="bold" color="white" textAlign="center">
@@ -220,42 +235,51 @@ export default function RelatorioContribuicoes() {
 
           <CardContent>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, justifyContent: 'center' }}>
-              <TextField label="Data Inicial" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
-              <TextField label="Data Final" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+              <TextField
+                label="Data Inicial"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 160 }}
+              />
+
+              <TextField
+                label="Data Final"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 160 }}
+              />
 
               <FormControl sx={{ minWidth: 200 }}>
                 <InputLabel>Tipo de Contribuição</InputLabel>
-                <Select value={tipoId} label="Tipo de Contribuição" onChange={(e) => setTipoId(e.target.value)}>
-                  <MenuItem value="">Todos</MenuItem>
-                  {tipos.map((t) => <MenuItem key={t.id} value={t.id}>{t.nome}</MenuItem>)}
-                </Select>
-              </FormControl>
-
-              {/* CAMPO DE PESQUISA DENTRO DO DROPDOWN DE MEMBROS */}
-              <FormControl sx={{ minWidth: 240 }}>
-                <InputLabel>Membro</InputLabel>
                 <Select
-                  value={membroId}
-                  label="Membro"
-                  onChange={(e) => setMembroId(e.target.value)}
-                  MenuProps={{ PaperProps: { sx: { maxHeight: 400 } } }}
+                  value={tipoId}
+                  label="Tipo de Contribuição"
+                  onChange={(e) => setTipoId(e.target.value)}
                 >
-                  <Box sx={{ px: 2, pt: 1, pb: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Pesquisar membro..."
-                      value={searchMembro}
-                      onChange={(e) => setSearchMembro(e.target.value)}
-                    />
-                  </Box>
-
                   <MenuItem value="">Todos</MenuItem>
-                  {membrosFiltrados.map((m) => (
-                    <MenuItem key={m.id} value={m.id}>{m.nome}</MenuItem>
+                  {tipos.map((t) => (
+                    <MenuItem key={t.id} value={t.id}>
+                      {t.nome}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
+
+              {/* 🔥 AGORA IGUAL AO FORM DE FUNCIONÁRIOS */}
+              <Autocomplete
+                options={membros}
+                getOptionLabel={(m) => m?.nome || ''}
+                value={membros.find((m) => m.id === membroId) || null}
+                onChange={(e, value) => setMembroId(value ? value.id : '')}
+                sx={{ minWidth: 240 }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Membro" placeholder="Pesquisar membro..." />
+                )}
+              />
 
               <Button
                 variant="contained"
@@ -263,7 +287,11 @@ export default function RelatorioContribuicoes() {
                 onClick={buscarRelatorio}
                 sx={{
                   background: 'linear-gradient(90deg,#6b78ff,#9c27b0)',
-                  color: 'white', fontWeight: 'bold', px: 3, py: 1.2, borderRadius: 3,
+                  color: 'white',
+                  fontWeight: 'bold',
+                  px: 3,
+                  py: 1.2,
+                  borderRadius: 3,
                 }}
               >
                 Gerar
@@ -283,33 +311,44 @@ export default function RelatorioContribuicoes() {
             <Divider sx={{ mb: 3 }} />
 
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
             ) : (
               <>
                 <Typography textAlign="center" fontWeight="bold" mb={2}>
-                  Total arrecadado: <Box component="span" sx={{ color: '#6b78ff' }}>{formatCurrency(total)}</Box>
+                  Total arrecadado:{' '}
+                  <Box component="span" sx={{ color: '#6b78ff' }}>
+                    {formatCurrency(total)}
+                  </Box>
                 </Typography>
 
-                {/* TABELA RESPONSIVA */}
                 <TableContainer
-  component={Paper}
-  sx={{
-    borderRadius: 3,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-    mb: 4,
-    overflowX: 'auto',
-    maxHeight: 500,         // 🔥 ALTURA DEFINIDA PARA ATIVAR O stickyHeader
-    overflowY: 'auto'       // 🔥 PERMITE ROLAR VERTICALMENTE
-  }}
->
-
+                  component={Paper}
+                  sx={{
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    mb: 4,
+                    overflowX: 'auto',
+                    maxHeight: 500,
+                    overflowY: 'auto',
+                  }}
+                >
                   <Table stickyHeader>
                     <TableHead>
                       <TableRow>
                         <TableCell><b>Membro</b></TableCell>
                         {months.map((m) => (
                           <TableCell key={m} align="center">
-                            <Box sx={{ px: 1, py: 0.5, background: '#eef2ff', borderRadius: 2, fontWeight: '600' }}>
+                            <Box
+                              sx={{
+                                px: 1,
+                                py: 0.5,
+                                background: '#eef2ff',
+                                borderRadius: 2,
+                                fontWeight: '600',
+                              }}
+                            >
                               {monthLabelFromKey(m)}
                             </Box>
                           </TableCell>
@@ -320,25 +359,40 @@ export default function RelatorioContribuicoes() {
 
                     <TableBody>
                       {tableRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={2 + months.length} align="center">Nenhum registro</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={2 + months.length} align="center">
+                            Nenhum registro
+                          </TableCell>
+                        </TableRow>
                       ) : (
                         tableRows.map((r) => (
                           <TableRow key={r.memberId || r.nome} hover>
                             <TableCell>
                               <b>{r.nome}</b>
                               <br />
-                              <small style={{ color: '#666' }}>{formatCurrency(r.total)}</small>
+                              <small style={{ color: '#666' }}>
+                                {formatCurrency(r.total)}
+                              </small>
                             </TableCell>
 
                             {months.map((m) => (
                               <TableCell key={m} align="right">
-                                <Box sx={{ px: 1.2, py: 0.5, background: r.months[m] > 0 ? '#eef7ff' : 'transparent', borderRadius: 1.5 }}>
+                                <Box
+                                  sx={{
+                                    px: 1.2,
+                                    py: 0.5,
+                                    background: r.months[m] > 0 ? '#eef7ff' : 'transparent',
+                                    borderRadius: 1.5,
+                                  }}
+                                >
                                   {formatCurrency(r.months[m] || 0)}
                                 </Box>
                               </TableCell>
                             ))}
 
-                            <TableCell align="right"><b>{formatCurrency(r.total)}</b></TableCell>
+                            <TableCell align="right">
+                              <b>{formatCurrency(r.total)}</b>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -348,13 +402,18 @@ export default function RelatorioContribuicoes() {
 
                 {dadosPizza.length > 0 && (
                   <Box sx={{ height: 350 }}>
-                    <Typography textAlign="center" fontWeight="bold" mb={2}>Distribuição por Tipo</Typography>
+                    <Typography textAlign="center" fontWeight="bold" mb={2}>
+                      Distribuição por Tipo
+                    </Typography>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
-                          {dadosPizza.map((_, i) => <Cell key={i} fill={cores[i % cores.length]} />)}
+                          {dadosPizza.map((_, i) => (
+                            <Cell key={i} fill={cores[i % cores.length]} />
+                          ))}
                         </Pie>
-                        <Tooltip /><Legend />
+                        <Tooltip />
+                        <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </Box>

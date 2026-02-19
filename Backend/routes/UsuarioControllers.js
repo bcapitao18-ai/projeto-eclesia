@@ -1499,42 +1499,201 @@ message: "❌ Erro interno ao cadastrar subsídio.",
 });
 
 
+// 🔹 Rota para "eliminar" funcionário (SOFT DELETE - desativa)
+router.delete("/funcionarios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🔹 Buscar funcionário
+    const funcionario = await Funcionarios.findByPk(id);
+
+    if (!funcionario) {
+      return res.status(404).json({
+        message: "Funcionário não encontrado.",
+      });
+    }
+
+    // 🔹 Contexto organizacional (segurança multi-sede/filial)
+    const { SedeId, FilhalId } = req.usuario;
+
+    if (
+      (SedeId && funcionario.SedeId !== SedeId) ||
+      (FilhalId && funcionario.FilhalId !== FilhalId)
+    ) {
+      return res.status(403).json({
+        message:
+          "Você não tem permissão para eliminar este funcionário.",
+      });
+    }
+
+    // 🔥 SOFT DELETE (mantém histórico)
+    await funcionario.update({
+      ativo: false,
+    });
+
+    return res.status(200).json({
+      message: "🗑️ Funcionário desativado com sucesso!",
+    });
+  } catch (error) {
+    console.error("Erro ao eliminar funcionário:", error);
+    return res.status(500).json({
+      message: "❌ Erro interno ao eliminar funcionário.",
+    });
+  }
+});
 
 
 
-// 🔹 Rota para cadastrar novo funcionário
+// 🔹 Rota para atualizar funcionário (AUTO ATUALIZA O CARGO PELO MEMBRO)
+router.put("/funcionarios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { salario_base, ativo, MembroId } = req.body;
+
+    // 🔹 Buscar funcionário existente
+    const funcionario = await Funcionarios.findByPk(id);
+
+    if (!funcionario) {
+      return res.status(404).json({
+        message: "Funcionário não encontrado.",
+      });
+    }
+
+    // 🔹 Se veio MembroId, validar o membro
+    let novoMembroId = funcionario.MembroId;
+    if (MembroId) {
+      const membro = await Membros.findByPk(MembroId);
+      if (!membro) {
+        return res.status(404).json({
+          message: "Membro informado não foi encontrado.",
+        });
+      }
+
+      // 🔹 Verificar duplicação (outro funcionário com mesmo membro)
+      const funcionarioDuplicado = await Funcionarios.findOne({
+        where: { MembroId },
+      });
+
+      if (funcionarioDuplicado && funcionarioDuplicado.id !== Number(id)) {
+        return res.status(400).json({
+          message: "Este membro já está cadastrado como funcionário.",
+        });
+      }
+
+      novoMembroId = MembroId;
+    }
+
+    // 🔥 BUSCAR AUTOMATICAMENTE O CARGO MAIS RECENTE DO MEMBRO
+    const cargoMembro = await CargoMembro.findOne({
+      where: { MembroId: novoMembroId },
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!cargoMembro) {
+      return res.status(400).json({
+        message:
+          "O membro selecionado não possui cargo associado. Associe um cargo antes de atualizar o funcionário.",
+      });
+    }
+
+    const CargoId = cargoMembro.CargoId;
+
+    // 🔹 Verificar se o cargo ainda existe (segurança)
+    const cargo = await Cargo.findByPk(CargoId);
+    if (!cargo) {
+      return res.status(404).json({
+        message: "Cargo associado ao membro não foi encontrado.",
+      });
+    }
+
+    // 🔹 Atualizar dados (com cargo automático)
+    await funcionario.update({
+      salario_base:
+        salario_base !== undefined
+          ? salario_base
+          : funcionario.salario_base,
+      ativo: ativo !== undefined ? ativo : funcionario.ativo,
+      MembroId: novoMembroId,
+      CargoId, // 🔥 sempre sincroniza com CargoMembros
+    });
+
+    return res.status(200).json({
+      message: "✅ Funcionário atualizado com sucesso!",
+      funcionario,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar funcionário:", error);
+    return res.status(500).json({
+      message: "❌ Erro interno ao atualizar funcionário.",
+    });
+  }
+});
+
+
+
+// 🔹 Rota para cadastrar novo funcionário (AUTO CAPTURA O CARGO DO MEMBRO)
 router.post("/funcionarios", auth, async (req, res) => {
   try {
-    const { salario_base, ativo, MembroId, CargoId } = req.body;
+    const { salario_base, ativo, MembroId } = req.body;
 
-    // 🔹 Validação
-    if (!MembroId || !CargoId || !salario_base) {
+    // 🔹 Validação básica
+    if (!MembroId || !salario_base) {
       return res.status(400).json({
-        message: "Preencha todos os campos obrigatórios (Membro, Cargo e Salário Base).",
+        message: "Preencha os campos obrigatórios (Membro e Salário Base).",
       });
     }
 
     // 🔹 Verificar se o Membro existe
     const membro = await Membros.findByPk(MembroId);
     if (!membro) {
-      return res.status(404).json({ message: "Membro não encontrado." });
+      return res.status(404).json({
+        message: "Membro não encontrado.",
+      });
     }
 
-    // 🔹 Verificar se o Cargo existe
+    // 🔥 BUSCAR AUTOMATICAMENTE O CARGO DO MEMBRO NA TABELA CargoMembros
+    const cargoMembro = await CargoMembro.findOne({
+      where: { MembroId },
+      order: [["createdAt", "DESC"]], // pega o cargo mais recente (caso tenha histórico)
+    });
+
+    if (!cargoMembro) {
+      return res.status(400).json({
+        message:
+          "Este membro não possui cargo associado. Associe um cargo antes de cadastrá-lo como funcionário.",
+      });
+    }
+
+    const CargoId = cargoMembro.CargoId;
+
+    // 🔹 Verificar se o Cargo ainda existe (segurança extra)
     const cargo = await Cargo.findByPk(CargoId);
     if (!cargo) {
-      return res.status(404).json({ message: "Cargo não encontrado." });
+      return res.status(404).json({
+        message: "Cargo associado ao membro não foi encontrado.",
+      });
     }
 
-    // 🔹 Pegar hierarquia do usuário logado (Sede / Filhal)
+    // 🔹 Verificar se já existe funcionário para este membro (evita duplicação)
+    const funcionarioExistente = await Funcionarios.findOne({
+      where: { MembroId },
+    });
+
+    if (funcionarioExistente) {
+      return res.status(400).json({
+        message: "Este membro já está cadastrado como funcionário.",
+      });
+    }
+
+    // 🔹 Contexto organizacional (Sede / Filial)
     const { SedeId, FilhalId } = req.usuario;
 
-    // 🔹 Criar funcionário associado ao contexto
+    // 🔥 Criar funcionário com Cargo automático
     const novoFuncionario = await Funcionarios.create({
       salario_base,
-      ativo,
+      ativo: ativo ?? true,
       MembroId,
-      CargoId,
+      CargoId, // agora vem automaticamente do CargoMembros
       SedeId: SedeId || null,
       FilhalId: FilhalId || null,
     });
@@ -1551,6 +1710,38 @@ router.post("/funcionarios", auth, async (req, res) => {
   }
 });
 
+
+// 🔹 LISTAR FUNCIONÁRIOS (com membro e cargo)
+router.get("/lista-funcionarios", auth, async (req, res) => {
+  try {
+    const { SedeId, FilhalId } = req.usuario;
+
+    const funcionarios = await Funcionarios.findAll({
+      where: {
+        ...(SedeId && { SedeId }),
+        ...(FilhalId && { FilhalId }),
+      },
+      include: [
+        {
+          model: Membros,
+          attributes: ["id", "nome"],
+        },
+        {
+          model: Cargo,
+          attributes: ["id", "nome"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.json(funcionarios);
+  } catch (error) {
+    console.error("Erro ao listar funcionários:", error);
+    res.status(500).json({
+      message: "Erro ao listar funcionários.",
+    });
+  }
+});
 
 
 
@@ -2472,14 +2663,17 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     }
 
     // -----------------------------
-    // 🎯 FILTROS OPCIONAIS
+    // 🎯 FILTRO POR TIPO (CORRETO)
     // -----------------------------
-    if (tipoId) {
-      where.TipoContribuicaoId = tipoId;
+    if (tipoId && tipoId !== '') {
+      where.TipoContribuicaoId = Number(tipoId);
     }
 
-    if (membroId) {
-      where.MembroId = membroId;
+    // -----------------------------
+    // 👤 🔥 FILTRO POR MEMBRO (CORRIGIDO)
+    // -----------------------------
+    if (membroId && membroId !== '' && membroId !== 'undefined' && membroId !== 'null') {
+      where.MembroId = Number(membroId); // CAST PARA INT (ESSENCIAL)
     }
 
     // -----------------------------
@@ -2581,8 +2775,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       };
     });
 
-    // ⚠️ MUITO IMPORTANTE:
-    // Retornar ARRAY puro (igual antes)
     return res.status(200).json(contribuicoes);
 
   } catch (error) {
@@ -2593,8 +2785,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
   }
 });
-
-
 
 
 

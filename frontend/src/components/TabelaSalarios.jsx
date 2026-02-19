@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Card,
@@ -18,6 +18,9 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Chip,
+  Grid,
+  Divider,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import api from "../api/axiosConfig";
@@ -27,11 +30,9 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
   Legend,
 } from "recharts";
@@ -69,8 +70,8 @@ export default function TabelaSalarios() {
 
       setSalarios(salariosConvertidos);
     } catch (error) {
-      console.error("Erro ao buscar salários:", error);
-      setMensagem("❌ Erro ao carregar salários.");
+      console.error(error);
+      setMensagem("Erro ao carregar salários.");
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ export default function TabelaSalarios() {
       });
       setFuncionarios(response.data);
     } catch (error) {
-      console.error("Erro ao buscar funcionários:", error);
+      console.error(error);
     }
   };
 
@@ -94,16 +95,6 @@ export default function TabelaSalarios() {
   }, []);
 
   const handleFiltrar = () => {
-    if (!startDate) {
-      setMensagem("Selecione pelo menos o mês inicial.");
-      return;
-    }
-
-    if (endDate && dayjs(endDate).isBefore(dayjs(startDate))) {
-      setMensagem("O mês final não pode ser anterior ao mês inicial.");
-      return;
-    }
-
     const finalDate = endDate || startDate;
     fetchSalarios(startDate, finalDate, selectedFuncionario);
   };
@@ -112,18 +103,57 @@ export default function TabelaSalarios() {
     setStartDate(dayjs().format("YYYY-MM"));
     setEndDate("");
     setSelectedFuncionario("");
-    setMensagem("");
     fetchSalarios();
   };
 
+  // KPIs (LÓGICA ORIGINAL MANTIDA)
+  const totalPago = useMemo(
+    () => salarios.reduce((acc, s) => acc + s.salario_liquido, 0),
+    [salarios]
+  );
+
+  const totalSubsidios = useMemo(
+    () => salarios.reduce((acc, s) => acc + s.total_subsidios, 0),
+    [salarios]
+  );
+
+  const mediaSalarial = useMemo(
+    () => (salarios.length ? totalPago / salarios.length : 0),
+    [totalPago, salarios]
+  );
+
+  // DADOS DO GRÁFICO DE PIZZA (SURREAL E INTELIGENTE)
+  const pieData = useMemo(() => {
+    const agrupado = salarios.reduce((acc, s) => {
+      const nome = s.Funcionario?.Membro?.nome || "Sem Nome";
+      if (!acc[nome]) acc[nome] = 0;
+      acc[nome] += s.salario_liquido;
+      return acc;
+    }, {});
+
+    return Object.keys(agrupado).map((nome) => ({
+      name: nome,
+      value: agrupado[nome],
+    }));
+  }, [salarios]);
+
+  const COLORS = [
+    "#6366f1",
+    "#22c55e",
+    "#06b6d4",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#14b8a6",
+  ];
+
+  // EXPORTAR PDF (LÓGICA RESTAURADA)
   const exportarPDF = () => {
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Relatório de Salários dos Funcionários", 14, 18);
-    doc.setFontSize(12);
-    doc.text(`Período: ${startDate} a ${endDate || startDate}`, 14, 28);
+    doc.setFontSize(18);
+    doc.text("Relatório Executivo de Salários", 14, 20);
 
-    const rows = salarios.map((s) => [
+    const tableData = salarios.map((s) => [
       s.Funcionario?.Membro?.nome || "—",
       s.mes_ano,
       `Kz ${s.salario_base.toFixed(2)}`,
@@ -133,323 +163,331 @@ export default function TabelaSalarios() {
     ]);
 
     autoTable(doc, {
+      startY: 30,
       head: [
-        ["Funcionário", "Mês/Ano", "Salário Base", "Subsídios", "Descontos", "Salário Líquido"],
+        [
+          "Funcionário",
+          "Mês/Ano",
+          "Salário Base",
+          "Subsídios",
+          "Descontos",
+          "Salário Líquido",
+        ],
       ],
-      body: rows,
-      startY: 40,
-      styles: { fontSize: 10 },
+      body: tableData,
     });
 
-    doc.save("relatorio-salarios.pdf");
+    doc.save("relatorio_salarios.pdf");
   };
 
+  // EXPORTAR EXCEL (LÓGICA RESTAURADA)
   const exportarExcel = () => {
-    const data = salarios.map((s) => ({
-      Funcionário: s.Funcionario?.Membro?.nome || "—",
-      "Mês/Ano": s.mes_ano,
-      "Salário Base": `Kz ${s.salario_base.toFixed(2)}`,
-      Subsídios: `Kz ${s.total_subsidios.toFixed(2)}`,
-      Descontos: `Kz ${(s.salario_base + s.total_subsidios - s.salario_liquido).toFixed(2)}`,
-      "Salário Líquido": `Kz ${s.salario_liquido.toFixed(2)}`,
+    const dados = salarios.map((s) => ({
+      Funcionario: s.Funcionario?.Membro?.nome || "—",
+      Mes: s.mes_ano,
+      Salario_Base: s.salario_base,
+      Subsidios: s.total_subsidios,
+      Descontos:
+        s.salario_base + s.total_subsidios - s.salario_liquido,
+      Salario_Liquido: s.salario_liquido,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Salários");
-    XLSX.writeFile(wb, "relatorio_salarios.xlsx");
+    const worksheet = XLSX.utils.json_to_sheet(dados);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Salarios");
+    XLSX.writeFile(workbook, "relatorio_salarios.xlsx");
   };
 
-  const buttonStyle = (variant = "contained") => ({
-    borderRadius: "50px",
-    px: 4,
-    py: 1.5,
-    fontWeight: 700,
-    textTransform: "none",
-    fontSize: "0.95rem",
-    boxShadow:
-      variant === "contained"
-        ? "0 6px 20px rgba(21,101,192,0.35)"
-        : "0 3px 10px rgba(13,71,161,0.15)",
-    background:
-      variant === "contained"
-        ? "linear-gradient(90deg, #0d47a1 0%, #1976d2 100%)"
-        : "transparent",
-    border: variant === "outlined" ? "2px solid #1565c0" : "none",
-    color: variant === "contained" ? "#fff" : "#0d47a1",
-    transition: "all 0.3s ease",
-    "&:hover": {
-      transform: "translateY(-2px)",
-      background:
-        variant === "contained"
-          ? "linear-gradient(90deg, #1565c0 0%, #0d47a1 100%)"
-          : "rgba(21,101,192,0.08)",
-    },
-  });
+  const premiumCard = {
+    borderRadius: 6,
+    background: "#ffffff",
+    boxShadow: "0 25px 80px rgba(0,0,0,0.05)",
+    border: "1px solid #f1f5f9",
+    backdropFilter: "blur(10px)",
+  };
 
-  // 📊 Agrupamento por funcionário (sem repetir nomes)
-  const chartData = Object.values(
-    salarios.reduce((acc, s) => {
-      const nome = s.Funcionario?.Membro?.nome || "—";
-      if (!acc[nome]) {
-        acc[nome] = { nome, Salário: 0, Subsídios: 0 };
-      }
-      acc[nome].Salário += s.salario_liquido;
-      acc[nome].Subsídios += s.total_subsidios;
-      return acc;
-    }, {})
-  );
+  const premiumButton = {
+    borderRadius: "16px",
+    px: 3.5,
+    py: 1.4,
+    fontWeight: 800,
+    textTransform: "none",
+    background: "linear-gradient(135deg,#4f46e5,#6366f1)",
+    color: "#fff",
+    boxShadow: "0 10px 30px rgba(79,70,229,0.25)",
+    "&:hover": {
+      transform: "translateY(-3px)",
+      boxShadow: "0 15px 40px rgba(79,70,229,0.35)",
+    },
+  };
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        py: 8,
+        py: 6,
         px: { xs: 2, md: 6 },
-        background: "linear-gradient(180deg,#f8fbff 0%, #e3f2fd 100%)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        fontFamily: "'Inter', sans-serif",
+        background:
+          "radial-gradient(circle at top, #ffffff 0%, #f8fafc 50%, #ffffff 100%)",
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        style={{ width: "100%", maxWidth: 1200 }}
-      >
+      {/* HEADER SURREAL BRANCO */}
+      <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}>
         <Typography
-          variant="h4"
+          variant="h3"
           fontWeight={900}
           textAlign="center"
-          sx={{
-            mb: 4,
-            color: "#0d47a1",
-            fontFamily: "'Poppins', sans-serif",
-            textShadow: "0 3px 8px rgba(13,71,161,0.25)",
-          }}
+          sx={{ color: "#0f172a", mb: 1, letterSpacing: 1 }}
         >
-          💼 Painel Premium — Gestão de Salários
+          Painel Executivo de Salários
         </Typography>
+        <Typography
+          textAlign="center"
+          sx={{ mb: 5, color: "#64748b", fontWeight: 500 }}
+        >
+          Relatórios Financeiros • Análise Premium • Gestão Inteligente
+        </Typography>
+      </motion.div>
 
-        <Card
-          elevation={10}
+      {/* KPIs SURREAIS */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {[
+          { title: "Total Pago", value: totalPago },
+          { title: "Total Subsídios", value: totalSubsidios },
+          { title: "Média Salarial", value: mediaSalarial },
+          { title: "Registos", value: salarios.length },
+        ].map((kpi, index) => (
+          <Grid item xs={12} md={3} key={index}>
+            <motion.div whileHover={{ y: -6 }}>
+              <Card sx={premiumCard}>
+                <CardContent>
+                  <Typography color="#64748b" fontWeight={700}>
+                    {kpi.title}
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={900}
+                    sx={{ mt: 1, color: "#020617" }}
+                  >
+                    {typeof kpi.value === "number"
+                      ? `Kz ${kpi.value.toFixed(2)}`
+                      : kpi.value}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* FILTROS + EXPORT PREMIUM */}
+      <Card sx={{ ...premiumCard, mb: 4 }}>
+        <CardContent
           sx={{
-            borderRadius: 5,
-            overflow: "hidden",
-            boxShadow: "0 10px 30px rgba(13,71,161,0.15)",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <CardContent sx={{ backgroundColor: "#fff", p: 4 }}>
-            {/* 🔍 Filtros */}
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 2,
-                mb: 4,
-                justifyContent: "center",
-              }}
+          <TextField
+            label="Mês Inicial"
+            type="month"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <TextField
+            label="Mês Final"
+            type="month"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Funcionário</InputLabel>
+            <Select
+              value={selectedFuncionario}
+              label="Funcionário"
+              onChange={(e) => setSelectedFuncionario(e.target.value)}
             >
-              <TextField
-                label="Mês Inicial"
-                type="month"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                sx={{ minWidth: 180 }}
-              />
-              <TextField
-                label="Mês Final (opcional)"
-                type="month"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                sx={{ minWidth: 180 }}
-              />
-              <FormControl sx={{ minWidth: 220 }}>
-                <InputLabel>Funcionário</InputLabel>
-                <Select
-                  value={selectedFuncionario}
-                  label="Funcionário"
-                  onChange={(e) => setSelectedFuncionario(e.target.value)}
+              <MenuItem value="">
+                <em>Todos</em>
+              </MenuItem>
+              {funcionarios.map((f) => (
+                <MenuItem key={f.id} value={f.id}>
+                  {f.Membro.nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button onClick={handleFiltrar} sx={premiumButton}>
+            Filtrar Relatório
+          </Button>
+
+          <Button
+            onClick={exportarPDF}
+            sx={{
+              ...premiumButton,
+              background: "linear-gradient(135deg,#0ea5e9,#38bdf8)",
+            }}
+          >
+            Exportar PDF
+          </Button>
+
+          <Button
+            onClick={exportarExcel}
+            sx={{
+              ...premiumButton,
+              background: "linear-gradient(135deg,#10b981,#34d399)",
+            }}
+          >
+            Exportar Excel
+          </Button>
+
+          <Button
+            onClick={handleReset}
+            sx={{
+              ...premiumButton,
+              background: "linear-gradient(135deg,#64748b,#94a3b8)",
+            }}
+          >
+            Resetar
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* GRÁFICO DE PIZZA SURREAL */}
+      <Card sx={{ ...premiumCard, mb: 4 }}>
+        <CardContent>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+            sx={{ mb: 3, color: "#0f172a" }}
+          >
+            Distribuição de Salários por Funcionário
+          </Typography>
+
+          <Box sx={{ width: "100%", height: 380 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={130}
+                  innerRadius={60}
+                  paddingAngle={4}
                 >
-                  <MenuItem value="">
-                    <em>Todos</em>
-                  </MenuItem>
-                  {funcionarios.map((f) => (
-                    <MenuItem key={f.id} value={f.id}>
-                      {f.Membro.nome}
-                    </MenuItem>
+                  {pieData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
-                </Select>
-              </FormControl>
-              <Button onClick={handleFiltrar} sx={buttonStyle("contained")}>
-                Filtrar
-              </Button>
-              <Button onClick={handleReset} sx={buttonStyle("outlined")}>
-                Resetar
-              </Button>
+                </Pie>
+                <Tooltip formatter={(v) => `Kz ${v.toFixed(2)}`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* TABELA ULTRA PREMIUM */}
+      <Card sx={premiumCard}>
+        <CardContent>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+              <CircularProgress size={60} />
             </Box>
-
-            {/* 📁 Exportações */}
-            <Box sx={{ mb: 3, textAlign: "center" }}>
-              <Button
-                onClick={exportarPDF}
-                disabled={salarios.length === 0}
-                sx={{ ...buttonStyle("outlined"), mr: 2 }}
-              >
-                Exportar PDF
-              </Button>
-              <Button
-                onClick={exportarExcel}
-                disabled={salarios.length === 0}
-                sx={buttonStyle("outlined")}
-              >
-                Exportar Excel
-              </Button>
-            </Box>
-
-            {/* 📊 Tabela */}
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-                <CircularProgress color="primary" />
-              </Box>
-            ) : (
-              <>
-                {mensagem && (
-                  <Typography
-                    color="error"
-                    fontWeight="bold"
-                    textAlign="center"
-                    mb={2}
-                  >
-                    {mensagem}
-                  </Typography>
-                )}
-
-                <TableContainer
-                  component={Paper}
-                  sx={{
-                    borderRadius: 3,
-                    overflow: "hidden",
-                    boxShadow: "0 6px 20px rgba(13,71,161,0.1)",
-                  }}
-                >
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow
+          ) : (
+            <TableContainer component={Paper} elevation={0}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow sx={{ background: "#f1f5f9" }}>
+                    {[
+                      "Funcionário",
+                      "Mês/Ano",
+                      "Salário Base",
+                      "Subsídios",
+                      "Descontos",
+                      "Salário Líquido",
+                    ].map((head) => (
+                      <TableCell
+                        key={head}
                         sx={{
-                          background: "linear-gradient(90deg,#0d47a1,#1565c0)",
+                          fontWeight: 900,
+                          color: "#020617",
+                          fontSize: "0.95rem",
                         }}
+                        align={head === "Funcionário" ? "left" : "right"}
                       >
-                        {[
-                          "Funcionário",
-                          "Mês/Ano",
-                          "Salário Base",
-                          "Subsídios",
-                          "Descontos",
-                          "Salário Líquido",
-                        ].map((head) => (
-                          <TableCell
-                            key={head}
-                            sx={{
-                              color: "#fff",
-                              fontWeight: 700,
-                              fontSize: "0.95rem",
-                            }}
-                            align={head === "Funcionário" ? "left" : "right"}
-                          >
-                            {head}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {salarios.length > 0 ? (
-                        salarios.map((s) => (
-                          <TableRow
-                            key={s.id}
-                            hover
-                            sx={{
-                              "&:hover": {
-                                backgroundColor: "#e3f2fd",
-                              },
-                            }}
-                          >
-                            <TableCell>
-                              {s.Funcionario?.Membro?.nome || "—"}
-                            </TableCell>
-                            <TableCell>{s.mes_ano}</TableCell>
-                            <TableCell align="right">
-                              Kz {s.salario_base.toFixed(2)}
-                            </TableCell>
-                            <TableCell align="right">
-                              Kz {s.total_subsidios.toFixed(2)}
-                            </TableCell>
-                            <TableCell align="right">
-                              Kz{" "}
-                              {(
-                                s.salario_base +
-                                s.total_subsidios -
-                                s.salario_liquido
-                              ).toFixed(2)}
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{ fontWeight: 700, color: "#0d47a1" }}
-                            >
-                              Kz {s.salario_liquido.toFixed(2)}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} align="center">
-                            Nenhum salário encontrado.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                        {head}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
 
-                {/* 📈 Gráfico agrupado por funcionário */}
-                {chartData.length > 0 && (
-                  <Box sx={{ mt: 6, height: 400 }}>
-                    <Typography
-                      variant="h6"
-                      textAlign="center"
-                      mb={2}
-                      sx={{ color: "#0d47a1", fontWeight: 700 }}
-                    >
-                      Evolução dos Salários Líquidos por Funcionário
-                    </Typography>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 0,
-                          bottom: 10,
+                <TableBody>
+                  {salarios.length > 0 ? (
+                    salarios.map((s) => (
+                      <TableRow
+                        key={s.id}
+                        sx={{
+                          transition: "0.25s",
+                          "&:hover": {
+                            background: "#f8fafc",
+                          },
                         }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                        <XAxis dataKey="nome" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="Salário" fill="#1976d2" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="Subsídios" fill="#90caf9" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+                        <TableCell sx={{ fontWeight: 700 }}>
+                          {s.Funcionario?.Membro?.nome || "—"}
+                        </TableCell>
+                        <TableCell>{s.mes_ano}</TableCell>
+                        <TableCell align="right">
+                          Kz {s.salario_base.toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right">
+                          Kz {s.total_subsidios.toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right">
+                          Kz{" "}
+                          {(
+                            s.salario_base +
+                            s.total_subsidios -
+                            s.salario_liquido
+                          ).toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            label={`Kz ${s.salario_liquido.toFixed(2)}`}
+                            sx={{
+                              fontWeight: 900,
+                              fontSize: "0.9rem",
+                              borderRadius: "12px",
+                              background:
+                                "linear-gradient(135deg,#10b981,#34d399)",
+                              color: "#022c22",
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        Nenhum salário encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 }

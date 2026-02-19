@@ -23,10 +23,19 @@ import {
   TableRow,
   Paper,
   Alert,
+  Grid,
+  Chip,
   Divider,
   Fade,
 } from "@mui/material";
-import { Paid } from "@mui/icons-material";
+import {
+  Paid,
+  Person,
+  CalendarMonth,
+  AccountBalanceWallet,
+  TrendingUp,
+  TrendingDown,
+} from "@mui/icons-material";
 import { motion } from "framer-motion";
 import api from "../api/axiosConfig";
 
@@ -150,213 +159,342 @@ export default function FormSalario() {
   };
 
   const calcularPercentualDesconto = (valorDesconto) =>
-    ((valorDesconto / valores.salario_base) * 100).toFixed(2);
+    valores.salario_base > 0
+      ? ((valorDesconto / valores.salario_base) * 100).toFixed(2)
+      : "0.00";
+
+  const cardResumo = (titulo, valor, icon, color) => (
+    <Box
+      sx={{
+        p: 3,
+        borderRadius: "20px",
+        background: "rgba(255,255,255,0.75)",
+        backdropFilter: "blur(18px)",
+        border: "1px solid rgba(15,23,42,0.06)",
+        boxShadow: "0 15px 45px rgba(2,6,23,0.08)",
+        transition: "all 0.35s ease",
+        "&:hover": {
+          transform: "translateY(-4px) scale(1.01)",
+          boxShadow: "0 25px 60px rgba(2,6,23,0.12)",
+        },
+      }}
+    >
+      <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box>
+          <Typography
+            sx={{
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              color: "#64748b",
+              letterSpacing: "0.5px",
+            }}
+          >
+            {titulo}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: "1.4rem",
+              fontWeight: 900,
+              color: "#020617",
+              mt: 0.5,
+            }}
+          >
+            {valor.toFixed(2)} Kz
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            width: 50,
+            height: 50,
+            borderRadius: "14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: color,
+            color: "#fff",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+          }}
+        >
+          {icon}
+        </Box>
+      </Box>
+    </Box>
+  );
 
   return (
-    <Fade in timeout={800}>
+    <Fade in timeout={700}>
       <Box
         sx={{
           minHeight: "100vh",
           p: { xs: 2, md: 6 },
           display: "flex",
           justifyContent: "center",
-          alignItems: "center",
+          alignItems: "flex-start",
           background:
-            "radial-gradient(circle at top left, #eaf3ff 0%, #ffffff 45%, #f3f7ff 100%)",
+            "radial-gradient(circle at top, #eef2ff 0%, #f8fafc 40%, #ffffff 100%)",
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 35 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
-          style={{ width: "100%", maxWidth: 800 }}
+          initial={{ opacity: 0, y: 40, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ width: "100%", maxWidth: 1100 }}
         >
           <Card
-            elevation={14}
             sx={{
-              borderRadius: "28px",
+              borderRadius: "30px",
               overflow: "hidden",
               background:
-                "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(235,245,255,0.97))",
-              backdropFilter: "blur(25px)",
-              border: "1px solid rgba(0,100,255,0.25)",
+                "linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)",
+              border: "1px solid rgba(2,6,23,0.04)",
               boxShadow:
-                "0 20px 60px rgba(0,90,255,0.25), inset 0 0 60px rgba(255,255,255,0.05)",
+                "0 40px 120px rgba(2,6,23,0.12)",
             }}
           >
-            {/* Header */}
+            {/* HEADER LUXUOSO */}
             <Box
               sx={{
-                p: 3,
-                background: "linear-gradient(90deg, #0033cc 0%, #0055ff 100%)",
-                textAlign: "center",
+                p: 4,
+                background:
+                  "linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%)",
+                color: "#fff",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <Typography
-                variant="h5"
+              <Box
                 sx={{
-                  fontWeight: 900,
-                  color: "#fff",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  textTransform: "uppercase",
-                }}
-              >
-                <Paid sx={{ fontSize: 35, mr: 1, color: "white" }} />
-                Geração de Salário
-              </Typography>
-            </Box>
-
-            <CardContent sx={{ p: 4 }}>
-              <Divider
-                sx={{
-                  mb: 4,
-                  borderColor: "rgba(0,70,255,0.2)",
-                  boxShadow: "0 1px 10px rgba(0,90,255,0.25)",
+                  position: "absolute",
+                  right: -60,
+                  top: -60,
+                  width: 200,
+                  height: 200,
+                  borderRadius: "50%",
+                  background: "rgba(59,130,246,0.25)",
+                  filter: "blur(90px)",
                 }}
               />
 
-              <form onSubmit={handleSubmit}>
-                {/* Mês/Ano */}
-                <TextField
-                  label="Mês/Ano"
-                  type="month"
-                  value={mesAno}
-                  onChange={(e) => setMesAno(e.target.value)}
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ mb: 3 }}
-                />
-
-                {/* Funcionário */}
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel>Funcionário</InputLabel>
-                  <Select
-                    value={FuncionarioId}
-                    onChange={(e) => handleFuncionarioChange(e.target.value)}
-                    required
-                  >
-                    {funcionarios.length === 0 ? (
-                      <MenuItem disabled>
-                        Nenhum funcionário encontrado
-                      </MenuItem>
-                    ) : (
-                      funcionarios.map((f) => (
-                        <MenuItem key={f.id} value={f.id}>
-                          {f.Membro?.nome || `Funcionário #${f.id}`}
-                        </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                </FormControl>
-
-                {/* Subsídios */}
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel>Subsídios</InputLabel>
-                  <Select
-                    multiple
-                    value={subsidiosSelecionados}
-                    onChange={(e) => setSubsidiosSelecionados(e.target.value)}
-                    input={<OutlinedInput label="Subsídios" />}
-                    renderValue={(selected) =>
-                      selected
-                        .map(
-                          (id) =>
-                            subsidios.find((s) => s.id === id)?.nome || "—"
-                        )
-                        .join(", ")
-                    }
-                  >
-                    {subsidios.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>
-                        <Checkbox
-                          checked={subsidiosSelecionados.includes(s.id)}
-                        />
-                        <ListItemText
-                          primary={`${s.nome} (+${s.valor} Kz)`}
-                        />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* Descontos */}
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel>Descontos</InputLabel>
-                  <Select
-                    multiple
-                    value={descontosSelecionados}
-                    onChange={(e) => setDescontosSelecionados(e.target.value)}
-                    input={<OutlinedInput label="Descontos" />}
-                    renderValue={(selected) =>
-                      selected
-                        .map(
-                          (id) =>
-                            descontos.find((d) => d.id === id)?.nome || "—"
-                        )
-                        .join(", ")
-                    }
-                  >
-                    {descontos.map((d) => (
-                      <MenuItem key={d.id} value={d.id}>
-                        <Checkbox
-                          checked={descontosSelecionados.includes(d.id)}
-                        />
-                        <ListItemText
-                          primary={`${d.nome} (-${d.valor} Kz)`}
-                        />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {/* Resumo */}
-                <Box
-                  sx={{
-                    mb: 3,
-                    p: 3,
-                    backgroundColor: "rgba(240,248,255,0.6)",
-                    borderRadius: 3,
-                    border: "1px solid rgba(0,90,255,0.15)",
-                  }}
-                >
-                  <Typography>
-                    💰 <b>Salário base:</b> {valores.salario_base.toFixed(2)} Kz
+              <Box display="flex" alignItems="center" gap={2}>
+                <Paid sx={{ fontSize: 42, color: "#60a5fa" }} />
+                <Box>
+                  <Typography variant="h4" fontWeight={900}>
+                    Processamento Salarial Premium
                   </Typography>
-                  <Typography color="green">
-                    ➕ <b>Subsídios:</b> {valores.total_subsidios.toFixed(2)} Kz
-                  </Typography>
-                  <Typography color="red">
-                    ➖ <b>Descontos:</b> {valores.total_descontos.toFixed(2)} Kz
-                  </Typography>
-                  <Typography color="primary" sx={{ mt: 1, fontWeight: "bold" }}>
-                    🧾 Salário Líquido: {valores.salario_liquido.toFixed(2)} Kz
+                  <Typography sx={{ opacity: 0.85 }}>
+                    Geração inteligente e automatizada de salários com controlo financeiro avançado
                   </Typography>
                 </Box>
+              </Box>
+            </Box>
 
-                {/* Tabela */}
+            <CardContent sx={{ p: { xs: 3, md: 5 } }}>
+              <form onSubmit={handleSubmit}>
+                <Grid container spacing={3}>
+                  {/* Mês */}
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Período (Mês/Ano)"
+                      type="month"
+                      value={mesAno}
+                      onChange={(e) => setMesAno(e.target.value)}
+                      fullWidth
+                      required
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+
+                  {/* Funcionário */}
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Selecionar Funcionário</InputLabel>
+                      <Select
+                        value={FuncionarioId}
+                        onChange={(e) =>
+                          handleFuncionarioChange(e.target.value)
+                        }
+                        label="Selecionar Funcionário"
+                      >
+                        {funcionarios.length === 0 ? (
+                          <MenuItem disabled>
+                            Nenhum funcionário encontrado
+                          </MenuItem>
+                        ) : (
+                          funcionarios.map((f) => (
+                            <MenuItem key={f.id} value={f.id}>
+                              <Person sx={{ mr: 1, fontSize: 18 }} />
+                              {f.Membro?.nome || `Funcionário #${f.id}`}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Subsídios */}
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Subsídios Aplicáveis</InputLabel>
+                      <Select
+                        multiple
+                        value={subsidiosSelecionados}
+                        onChange={(e) =>
+                          setSubsidiosSelecionados(e.target.value)
+                        }
+                        input={<OutlinedInput label="Subsídios Aplicáveis" />}
+                        renderValue={(selected) =>
+                          selected
+                            .map(
+                              (id) =>
+                                subsidios.find((s) => s.id === id)?.nome
+                            )
+                            .join(", ")
+                        }
+                      >
+                        {subsidios.map((s) => (
+                          <MenuItem key={s.id} value={s.id}>
+                            <Checkbox
+                              checked={subsidiosSelecionados.includes(s.id)}
+                            />
+                            <ListItemText
+                              primary={s.nome}
+                              secondary={`+ ${s.valor} Kz`}
+                            />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Descontos */}
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Descontos Aplicáveis</InputLabel>
+                      <Select
+                        multiple
+                        value={descontosSelecionados}
+                        onChange={(e) =>
+                          setDescontosSelecionados(e.target.value)
+                        }
+                        input={<OutlinedInput label="Descontos Aplicáveis" />}
+                        renderValue={(selected) =>
+                          selected
+                            .map(
+                              (id) =>
+                                descontos.find((d) => d.id === id)?.nome
+                            )
+                            .join(", ")
+                        }
+                      >
+                        {descontos.map((d) => (
+                          <MenuItem key={d.id} value={d.id}>
+                            <Checkbox
+                              checked={descontosSelecionados.includes(d.id)}
+                            />
+                            <ListItemText
+                              primary={d.nome}
+                              secondary={`- ${d.valor} Kz`}
+                            />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                {/* RESUMO FINANCEIRO PREMIUM (SEM ÍCONES FEIOS) */}
+                <Box sx={{ mt: 5 }}>
+                  <Typography
+                    variant="h6"
+                    fontWeight={900}
+                    sx={{ mb: 2, color: "#020617" }}
+                  >
+                    Resumo Financeiro
+                  </Typography>
+
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={3}>
+                      {cardResumo(
+                        "Salário Base",
+                        valores.salario_base,
+                        <AccountBalanceWallet />,
+                        "linear-gradient(135deg,#1e3a8a,#2563eb)"
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                      {cardResumo(
+                        "Total de Subsídios",
+                        valores.total_subsidios,
+                        <TrendingUp />,
+                        "linear-gradient(135deg,#065f46,#10b981)"
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                      {cardResumo(
+                        "Total de Descontos",
+                        valores.total_descontos,
+                        <TrendingDown />,
+                        "linear-gradient(135deg,#7f1d1d,#ef4444)"
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                      {cardResumo(
+                        "Salário Líquido",
+                        valores.salario_liquido,
+                        <Paid />,
+                        "linear-gradient(135deg,#020617,#334155)"
+                      )}
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {/* TABELA PREMIUM */}
                 {descontosSelecionados.length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                      Descontos Aplicados
+                  <Box sx={{ mt: 5 }}>
+                    <Divider sx={{ mb: 3 }} />
+                    <Typography
+                      variant="h6"
+                      fontWeight={900}
+                      sx={{ mb: 2 }}
+                    >
+                      Descontos Aplicados (Análise Detalhada)
                     </Typography>
+
                     <TableContainer
                       component={Paper}
                       sx={{
-                        mt: 1,
-                        borderRadius: 3,
+                        borderRadius: "20px",
                         overflow: "hidden",
-                        boxShadow: "0 8px 25px rgba(0,80,255,0.15)",
+                        border: "1px solid #f1f5f9",
+                        boxShadow: "0 20px 50px rgba(2,6,23,0.08)",
                       }}
                     >
                       <Table>
-                        <TableHead sx={{ backgroundColor: "rgba(0,90,255,0.1)" }}>
+                        <TableHead
+                          sx={{
+                            background:
+                              "linear-gradient(90deg,#020617,#0f172a)",
+                          }}
+                        >
                           <TableRow>
-                            <TableCell><b>Desconto</b></TableCell>
-                            <TableCell align="right"><b>Valor</b></TableCell>
-                            <TableCell align="right"><b>Porcentagem (%)</b></TableCell>
+                            <TableCell sx={{ color: "#fff", fontWeight: 800 }}>
+                              Desconto
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ color: "#fff", fontWeight: 800 }}
+                            >
+                              Valor (Kz)
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{ color: "#fff", fontWeight: 800 }}
+                            >
+                              Percentagem (%)
+                            </TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -365,13 +503,19 @@ export default function FormSalario() {
                               descontosSelecionados.includes(d.id)
                             )
                             .map((desconto) => (
-                              <TableRow key={desconto.id}>
+                              <TableRow key={desconto.id} hover>
                                 <TableCell>{desconto.nome}</TableCell>
                                 <TableCell align="right">
-                                  {desconto.valor} Kz
+                                  <Chip
+                                    label={`${desconto.valor} Kz`}
+                                    sx={{ fontWeight: 700 }}
+                                  />
                                 </TableCell>
                                 <TableCell align="right">
-                                  {calcularPercentualDesconto(desconto.valor)}%
+                                  {calcularPercentualDesconto(
+                                    desconto.valor
+                                  )}
+                                  %
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -381,65 +525,50 @@ export default function FormSalario() {
                   </Box>
                 )}
 
-                {/* Mensagem */}
+                {/* ALERT PREMIUM */}
                 {mensagem.texto && (
                   <Alert
                     severity={mensagem.tipo}
                     sx={{
-                      mb: 3,
-                      borderRadius: 3,
-                      backgroundColor:
-                        mensagem.tipo === "success"
-                          ? "rgba(0,80,255,0.08)"
-                          : "rgba(255,80,80,0.1)",
-                      color:
-                        mensagem.tipo === "success"
-                          ? "#0033cc"
-                          : "rgb(150,0,0)",
-                      border: `1px solid ${
-                        mensagem.tipo === "success"
-                          ? "rgba(0,80,255,0.25)"
-                          : "rgba(255,0,0,0.2)"
-                      }`,
-                      fontWeight: 600,
+                      mt: 4,
+                      borderRadius: "16px",
+                      fontWeight: 700,
                     }}
                   >
                     {mensagem.texto}
                   </Alert>
                 )}
 
-                {/* Botão */}
+                {/* BOTÃO LUXUOSO */}
                 <Button
-                  variant="contained"
-                  fullWidth
                   type="submit"
+                  fullWidth
                   disabled={salvando}
                   sx={{
-                    mt: 2,
-                    py: 1.8,
-                    fontWeight: 800,
-                    fontSize: "1.1rem",
-                    borderRadius: "45px",
+                    mt: 5,
+                    py: 2,
+                    fontSize: "1.15rem",
+                    fontWeight: 900,
+                    borderRadius: "50px",
                     textTransform: "none",
-                    color: "#fff",
+                    letterSpacing: "0.5px",
                     background:
-                      "linear-gradient(90deg, #0033cc 0%, #0055ff 100%)",
+                      "linear-gradient(135deg,#020617,#1e3a8a,#2563eb)",
+                    color: "#fff",
                     boxShadow:
-                      "0 10px 35px rgba(0,60,255,0.45), inset 0 0 10px rgba(255,255,255,0.3)",
+                      "0 20px 50px rgba(37,99,235,0.45)",
                     transition: "all 0.35s ease",
                     "&:hover": {
-                      background:
-                        "linear-gradient(90deg, #0044ff 0%, #0070ff 100%)",
-                      transform: "scale(1.045)",
+                      transform: "scale(1.03)",
                       boxShadow:
-                        "0 12px 45px rgba(0,80,255,0.55), inset 0 0 15px rgba(255,255,255,0.4)",
+                        "0 25px 70px rgba(37,99,235,0.65)",
                     },
                   }}
                 >
                   {salvando ? (
-                    <CircularProgress size={24} color="inherit" />
+                    <CircularProgress size={26} color="inherit" />
                   ) : (
-                    "Gerar Salário"
+                    "Efetuar pagamento"
                   )}
                 </Button>
               </form>

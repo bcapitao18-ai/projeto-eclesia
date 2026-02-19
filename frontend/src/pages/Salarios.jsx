@@ -1,58 +1,275 @@
+// src/pages/GestaoSalarios.jsx
 import React, { useState } from "react";
-import { Box, Typography, Button, Stack } from "@mui/material";
-import { motion } from "framer-motion";
+import {
+  Box,
+  Typography,
+  Button,
+  Stack,
+  Breadcrumbs,
+  Link,
+  Divider,
+  Modal,
+  IconButton,
+} from "@mui/material";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MonetizationOn,
   People,
   Payment,
   Discount,
   AccountBalanceWallet,
+  NavigateNext,
+  Visibility,
+  Close,
 } from "@mui/icons-material";
 
 import FormFuncionarios from "../components/FormFuncionarios";
 import FormSubsidios from "../components/FormSubsidios";
 import FormDescontos from "../components/FormDescontos";
 import FormSalarios from "../components/FormSalarios";
+import ListaFuncionarios from "../components/ListaFuncionarios";
 
 export default function GestaoSalarios() {
   const [formAtivo, setFormAtivo] = useState("funcionarios");
+  const [openModalFuncionarios, setOpenModalFuncionarios] = useState(false);
 
-  const renderFormulario = () => {
-    switch (formAtivo) {
-      case "funcionarios":
-        return <FormFuncionarios />;
-      case "subsidios":
-        return <FormSubsidios />;
-      case "descontos":
-        return <FormDescontos />;
-      case "salarios":
-        return <FormSalarios />;
-      default:
-        return null;
-    }
+  const handleOpenFuncionarios = () => setOpenModalFuncionarios(true);
+  const handleCloseFuncionarios = () => setOpenModalFuncionarios(false);
+
+  const modulos = {
+    funcionarios: {
+      titulo: "Gestão de Funcionários",
+      descricao:
+        "Cadastre, visualize e administre todos os funcionários com controlo total, rastreabilidade e organização empresarial de alto nível.",
+      componente: (
+        <Stack spacing={4}>
+          {/* HEADER PREMIUM */}
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: "24px",
+              background:
+                "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
+              color: "#fff",
+              boxShadow: "0 25px 60px rgba(2,6,23,0.35)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h6"
+                fontWeight={900}
+                sx={{ letterSpacing: "0.5px" }}
+              >
+                Painel Corporativo de Funcionários
+              </Typography>
+              <Typography sx={{ opacity: 0.85, fontSize: "0.92rem" }}>
+                Gestão inteligente, visual premium e controlo estratégico do
+                capital humano
+              </Typography>
+            </Box>
+
+            <Button
+              startIcon={<Visibility />}
+              onClick={handleOpenFuncionarios}
+              sx={{
+                textTransform: "none",
+                fontWeight: 900,
+                px: 3,
+                py: 1.4,
+                borderRadius: "16px",
+                color: "#fff",
+                background:
+                  "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                boxShadow: "0 15px 40px rgba(37,99,235,0.5)",
+                letterSpacing: "0.4px",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "translateY(-3px) scale(1.03)",
+                  background:
+                    "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+                  boxShadow: "0 20px 50px rgba(37,99,235,0.65)",
+                },
+              }}
+            >
+              Ver Funcionários
+            </Button>
+          </Box>
+
+          {/* FORMULÁRIO PREMIUM */}
+          <Box
+            sx={{
+              p: 4,
+              borderRadius: "28px",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 30px 80px rgba(2,6,23,0.06)",
+            }}
+          >
+            <FormFuncionarios />
+          </Box>
+
+          {/* MODAL SURREAL CENTRALIZADO (CORRIGIDO) */}
+          <AnimatePresence>
+            {openModalFuncionarios && (
+              <Modal
+                open={openModalFuncionarios}
+                onClose={handleCloseFuncionarios}
+                closeAfterTransition
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backdropFilter: "blur(18px)",
+                  background:
+                    "linear-gradient(180deg, rgba(2,6,23,0.75) 0%, rgba(15,23,42,0.9) 100%)",
+                  p: 2,
+                }}
+              >
+                <Box
+                  component={motion.div}
+                  initial={{ opacity: 0, scale: 0.85, y: 80 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 60 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  sx={{
+                    position: "relative", // 🔥 CORREÇÃO DO BUG
+                    width: "100%",
+                    maxWidth: "1500px",
+                    maxHeight: "92vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: "32px",
+                    overflow: "hidden",
+                    background:
+                      "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                    boxShadow:
+                      "0 80px 180px rgba(2,6,23,0.7), 0 20px 60px rgba(0,0,0,0.25)",
+                    border: "1px solid rgba(255,255,255,0.6)",
+                  }}
+                >
+                  {/* HEADER DO MODAL LUXUOSO */}
+                  <Box
+                    sx={{
+                      px: 4,
+                      py: 3,
+                      background:
+                        "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
+                      color: "#fff",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <Box>
+                      <Typography
+                        variant="h5"
+                        fontWeight={900}
+                        sx={{ letterSpacing: "0.6px" }}
+                      >
+                        Lista Premium de Funcionários
+                      </Typography>
+                      <Typography sx={{ opacity: 0.85, fontSize: "0.9rem" }}>
+                        Visualização corporativa • Controlo avançado • Interface
+                        surreal
+                      </Typography>
+                    </Box>
+
+                    <IconButton
+                      onClick={handleCloseFuncionarios}
+                      sx={{
+                        background: "rgba(255,255,255,0.12)",
+                        color: "#fff",
+                        borderRadius: "14px",
+                        backdropFilter: "blur(10px)",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          background: "rgba(255,255,255,0.2)",
+                          transform: "scale(1.1) rotate(90deg)",
+                        },
+                      }}
+                    >
+                      <Close />
+                    </IconButton>
+                  </Box>
+
+                  {/* CORPO COM SCROLL INTERNO PREMIUM */}
+                  <Box
+                    sx={{
+                      p: 4,
+                      overflowY: "auto",
+                      flex: 1,
+                      background:
+                        "radial-gradient(circle at top, #ffffff 0%, #f1f5f9 100%)",
+                      "&::-webkit-scrollbar": {
+                        width: "8px",
+                      },
+                      "&::-webkit-scrollbar-thumb": {
+                        background: "#cbd5f5",
+                        borderRadius: "10px",
+                      },
+                    }}
+                  >
+                    <ListaFuncionarios />
+                  </Box>
+                </Box>
+              </Modal>
+            )}
+          </AnimatePresence>
+        </Stack>
+      ),
+    },
+    subsidios: {
+      titulo: "Gestão de Subsídios",
+      descricao:
+        "Configure benefícios e incentivos salariais com precisão financeira e gestão estratégica empresarial.",
+      componente: <FormSubsidios />,
+    },
+    descontos: {
+      titulo: "Gestão de Descontos",
+      descricao:
+        "Defina políticas de descontos com segurança, transparência e controlo financeiro avançado.",
+      componente: <FormDescontos />,
+    },
+    salarios: {
+      titulo: "Processamento Salarial",
+      descricao:
+        "Execute o processamento completo de salários com auditoria, eficiência e segurança corporativa.",
+      componente: <FormSalarios />,
+    },
   };
 
-  const buttonStyles = (active) => ({
-    borderRadius: "50px",
-    px: 6,
+  const menuButtonStyles = (active) => ({
+    justifyContent: "flex-start",
+    borderRadius: "20px",
+    px: 3,
     py: 2,
-    fontWeight: 800,
-    fontSize: "1rem",
+    fontWeight: 900,
+    fontSize: "0.95rem",
     textTransform: "none",
-    color: active ? "#fff" : "#0d47a1",
+    width: "100%",
+    letterSpacing: "0.3px",
+    color: active ? "#ffffff" : "#0f172a",
     background: active
-      ? "linear-gradient(90deg, #0d47a1 0%, #1976d2 100%)"
+      ? "linear-gradient(135deg, #020617 0%, #1e3a8a 100%)"
       : "#ffffff",
-    border: "2px solid #0d47a1",
+    border: active
+      ? "1px solid rgba(255,255,255,0.15)"
+      : "1px solid #e2e8f0",
     boxShadow: active
-      ? "0 8px 24px rgba(13, 71, 161, 0.4)"
-      : "0 4px 12px rgba(13, 71, 161, 0.15)",
-    transition: "all 0.3s ease-in-out",
+      ? "0 20px 45px rgba(30,58,138,0.35)"
+      : "0 6px 18px rgba(0,0,0,0.05)",
+    transition: "all 0.35s ease",
     "&:hover": {
-      transform: "translateY(-3px)",
-      background: "linear-gradient(90deg, #1565c0 0%, #0d47a1 100%)",
-      color: "#fff",
-      boxShadow: "0 10px 28px rgba(13, 71, 161, 0.5)",
+      transform: "translateX(6px) scale(1.02)",
+      background: active
+        ? "linear-gradient(135deg, #020617 0%, #1e40af 100%)"
+        : "#f8fafc",
     },
   });
 
@@ -61,96 +278,139 @@ export default function GestaoSalarios() {
       sx={{
         width: "100%",
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #ffffff 0%, #e3f2fd 100%)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        py: 10,
-        fontFamily: "'Inter', sans-serif",
+        background:
+          "linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #eef2f7 100%)",
+        px: { xs: 2, md: 6 },
+        py: 5,
+        fontFamily: "'Inter', 'Poppins', sans-serif",
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        style={{ width: "100%", maxWidth: 1100, textAlign: "center" }}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        sx={{ mb: 3 }}
       >
-        {/* Título Premium */}
-        <Typography
-          variant="h3"
-          fontWeight={900}
-          sx={{
-            mb: 5,
-            fontFamily: "'Poppins', sans-serif",
-            color: "#0d47a1",
-            textShadow: "0 3px 8px rgba(13,71,161,0.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 1,
-          }}
-        >
-          <MonetizationOn sx={{ color: "#1565c0", fontSize: 42 }} />
-          Gestão de Salários
+        <Link underline="hover" sx={{ fontWeight: 700, color: "#64748b" }}>
+          RH
+        </Link>
+        <Link underline="hover" sx={{ fontWeight: 700, color: "#64748b" }}>
+          Gestão Financeira
+        </Link>
+        <Typography sx={{ fontWeight: 900, color: "#020617" }}>
+          {modulos[formAtivo].titulo}
         </Typography>
+      </Breadcrumbs>
 
-        {/* Barra de Botões */}
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={3}
-          justifyContent="center"
-          alignItems="center"
-          sx={{ mb: 8 }}
-        >
-          <Button
-            startIcon={<People />}
-            onClick={() => setFormAtivo("funcionarios")}
-            sx={buttonStyles(formAtivo === "funcionarios")}
-          >
-            Funcionários
-          </Button>
-
-          <Button
-            startIcon={<Payment />}
-            onClick={() => setFormAtivo("subsidios")}
-            sx={buttonStyles(formAtivo === "subsidios")}
-          >
-            Subsídios
-          </Button>
-
-          <Button
-            startIcon={<Discount />}
-            onClick={() => setFormAtivo("descontos")}
-            sx={buttonStyles(formAtivo === "descontos")}
-          >
-            Descontos
-          </Button>
-
-          <Button
-            startIcon={<AccountBalanceWallet />}
-            onClick={() => setFormAtivo("salarios")}
-            sx={buttonStyles(formAtivo === "salarios")}
-          >
-            Efetuar Pagamento
-          </Button>
-        </Stack>
-
-        {/* Formulário Selecionado */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          style={{
-            marginTop: "40px",
-            backgroundColor: "#fff",
-            borderRadius: "20px",
-            boxShadow: "0 8px 30px rgba(13,71,161,0.15)",
-            padding: "40px",
+      <Box
+        sx={{
+          display: "flex",
+          gap: 4,
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
+        {/* SIDEBAR PREMIUM */}
+        <Box
+          sx={{
+            width: { xs: "100%", md: 320 },
+            minWidth: 300,
+            borderRadius: "28px",
+            p: 3,
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 25px 60px rgba(15,23,42,0.06)",
+            height: "fit-content",
           }}
         >
-          {renderFormulario()}
-        </motion.div>
-      </motion.div>
+          <Typography
+            variant="subtitle1"
+            fontWeight={900}
+            sx={{ mb: 2, color: "#020617", letterSpacing: "0.7px" }}
+          >
+            MÓDULOS SALARIAIS
+          </Typography>
+
+          <Divider sx={{ mb: 3 }} />
+
+          <Stack spacing={2}>
+            <Button
+              startIcon={<People />}
+              onClick={() => setFormAtivo("funcionarios")}
+              sx={menuButtonStyles(formAtivo === "funcionarios")}
+            >
+              Gestão de Funcionários
+            </Button>
+
+            <Button
+              startIcon={<Payment />}
+              onClick={() => setFormAtivo("subsidios")}
+              sx={menuButtonStyles(formAtivo === "subsidios")}
+            >
+              Gestão de Subsídios
+            </Button>
+
+            <Button
+              startIcon={<Discount />}
+              onClick={() => setFormAtivo("descontos")}
+              sx={menuButtonStyles(formAtivo === "descontos")}
+            >
+              Gestão de Descontos
+            </Button>
+
+            <Button
+              startIcon={<AccountBalanceWallet />}
+              onClick={() => setFormAtivo("salarios")}
+              sx={menuButtonStyles(formAtivo === "salarios")}
+            >
+              Processamento Salarial
+            </Button>
+          </Stack>
+        </Box>
+
+        {/* CONTEÚDO PRINCIPAL */}
+        <Box sx={{ flex: 1 }}>
+          <Box
+            sx={{
+              mb: 3,
+              p: 4,
+              borderRadius: "28px",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 20px 50px rgba(2,6,23,0.05)",
+            }}
+          >
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{ color: "#020617", mb: 1 }}
+            >
+              {modulos[formAtivo].titulo}
+            </Typography>
+
+            <Typography
+              sx={{
+                color: "#64748b",
+                fontSize: "0.97rem",
+                lineHeight: 1.8,
+                fontWeight: 500,
+              }}
+            >
+              {modulos[formAtivo].descricao}
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              borderRadius: "32px",
+              padding: "45px",
+              minHeight: "560px",
+              background: "#ffffff",
+              boxShadow: "0 40px 100px rgba(2,6,23,0.07)",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            {modulos[formAtivo].componente}
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 }

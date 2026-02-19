@@ -14,6 +14,7 @@ import {
   Button,
   Modal,
   Divider,
+  Avatar,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
@@ -63,55 +64,84 @@ export default function ListaDespesasCategoria({ categoria }) {
 
   return (
     <MotionBox
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.7 }}
       sx={{
-        minWidth: 540,
+        minWidth: 560,
         maxHeight: "85vh",
         overflowY: "auto",
         p: 4,
-        borderRadius: 5,
-        background:
-          "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        boxShadow:
-          "0 40px 80px rgba(0,0,0,0.08)",
-        border: "1px solid rgba(255,255,255,0.6)",
-        backdropFilter: "blur(20px)",
+        borderRadius: 7,
+        background: `
+          radial-gradient(circle at 0% 0%, rgba(124,58,237,0.08) 0%, transparent 40%),
+          radial-gradient(circle at 100% 0%, rgba(139,92,246,0.08) 0%, transparent 40%),
+          linear-gradient(180deg,#ffffff 0%, #faf7ff 100%)
+        `,
+        boxShadow: "0 70px 200px rgba(88,28,135,0.18)",
+        border: "1px solid rgba(139,92,246,0.15)",
+        backdropFilter: "blur(30px)",
       }}
     >
-      {/* HEADER */}
+      {/* HEADER SURREAL LUXO */}
       <Box mb={4}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 900,
-            letterSpacing: "-1px",
-            color: "#0f172a",
-          }}
-        >
-          Despesas
-        </Typography>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: 4,
+              background:
+                "linear-gradient(135deg,#6d28d9,#7c3aed,#8b5cf6)",
+              boxShadow:
+                "0 20px 60px rgba(124,58,237,0.45), inset 0 0 20px rgba(255,255,255,0.2)",
+              fontSize: 26,
+            }}
+          >
+            💎
+          </Avatar>
 
-        <Typography
-          sx={{
-            color: "#64748b",
-            fontWeight: 500,
-            mt: 1,
-          }}
-        >
-          Categoria:{" "}
-          <span style={{ color: "#111827", fontWeight: 700 }}>
-            {categoria?.nome}
-          </span>
-        </Typography>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 900,
+                letterSpacing: "-1px",
+                color: "#2e1065",
+              }}
+            >
+              Despesas da Categoria
+            </Typography>
 
-        <Divider sx={{ mt: 3, opacity: 0.5 }} />
+            <Typography
+              sx={{
+                color: "#6b21a8",
+                fontWeight: 600,
+                mt: 0.5,
+                fontSize: 15,
+              }}
+            >
+              {categoria?.nome}
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Divider
+          sx={{
+            mt: 3,
+            opacity: 0.4,
+            borderColor: "rgba(139,92,246,0.2)",
+          }}
+        />
       </Box>
 
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress sx={{ color: "#6366f1" }} />
+        <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+          <CircularProgress
+            size={50}
+            thickness={4}
+            sx={{ color: "#7c3aed" }}
+          />
         </Box>
       ) : (
         <Stack spacing={3}>
@@ -119,51 +149,56 @@ export default function ListaDespesasCategoria({ categoria }) {
             {despesas.map((despesa, index) => (
               <MotionPaper
                 key={despesa.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 30, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{
-                  duration: 0.4,
+                  duration: 0.5,
                   delay: index * 0.05,
+                  ease: "easeOut",
                 }}
                 whileHover={{
+                  y: -8,
                   scale: 1.02,
-                  y: -4,
                 }}
                 sx={{
-                  p: 3,
-                  borderRadius: 4,
+                  p: 3.2,
+                  borderRadius: 5,
                   background: "#ffffff",
-                  border: "1px solid #eef2f7",
+                  border: "1px solid rgba(139,92,246,0.12)",
                   boxShadow:
-                    "0 10px 30px rgba(0,0,0,0.05)",
+                    "0 25px 70px rgba(124,58,237,0.12)",
                   position: "relative",
                   overflow: "hidden",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow:
+                      "0 35px 90px rgba(124,58,237,0.22)",
+                  },
                 }}
               >
-                {/* BARRA PREMIUM */}
+                {/* BARRA SURREAL ROXA */}
                 <Box
                   sx={{
                     position: "absolute",
                     left: 0,
                     top: 0,
-                    width: 5,
+                    width: 6,
                     height: "100%",
                     background:
-                      "linear-gradient(180deg,#6366f1,#8b5cf6)",
+                      "linear-gradient(180deg,#6d28d9,#7c3aed,#8b5cf6)",
+                    boxShadow:
+                      "0 0 20px rgba(124,58,237,0.8)",
                   }}
                 />
 
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                >
+                <Box display="flex" justifyContent="space-between">
                   <Box>
                     <Typography
                       sx={{
-                        fontWeight: 800,
-                        fontSize: 18,
-                        color: "#111827",
+                        fontWeight: 900,
+                        fontSize: 19,
+                        color: "#1e1b4b",
                       }}
                     >
                       {despesa.descricao}
@@ -173,8 +208,9 @@ export default function ListaDespesasCategoria({ categoria }) {
                       <Typography
                         sx={{
                           fontSize: 14,
-                          mt: 0.5,
+                          mt: 0.6,
                           color: "#6b7280",
+                          fontWeight: 500,
                         }}
                       >
                         {despesa.observacao}
@@ -189,10 +225,13 @@ export default function ListaDespesasCategoria({ categoria }) {
                         setOpenEditModal(true);
                       }}
                       sx={{
-                        background:
-                          "linear-gradient(135deg,#eef2ff,#e0e7ff)",
+                        background: "#f5f3ff",
+                        border: "1px solid rgba(139,92,246,0.25)",
+                        boxShadow:
+                          "0 10px 30px rgba(124,58,237,0.2)",
                         "&:hover": {
-                          scale: 1.1,
+                          transform: "scale(1.12)",
+                          background: "#ede9fe",
                         },
                       }}
                     >
@@ -207,10 +246,13 @@ export default function ListaDespesasCategoria({ categoria }) {
                         })
                       }
                       sx={{
-                        background:
-                          "linear-gradient(135deg,#fff1f2,#ffe4e6)",
+                        background: "#faf5ff",
+                        border: "1px solid rgba(124,58,237,0.25)",
+                        boxShadow:
+                          "0 10px 30px rgba(124,58,237,0.15)",
                         "&:hover": {
-                          scale: 1.1,
+                          transform: "scale(1.12)",
+                          background: "#f3e8ff",
                         },
                       }}
                     >
@@ -219,46 +261,40 @@ export default function ListaDespesasCategoria({ categoria }) {
                   </Stack>
                 </Box>
 
-                {/* CHIPS PREMIUM */}
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  mt={3}
-                  flexWrap="wrap"
-                >
+                <Stack direction="row" spacing={1} mt={3} flexWrap="wrap">
                   <Chip
-                    label={`Kz ${Number(
-                      despesa.valor
-                    ).toLocaleString("pt-AO", {
-                      minimumFractionDigits: 2,
-                    })}`}
+                    label={`Kz ${Number(despesa.valor).toLocaleString(
+                      "pt-AO",
+                      { minimumFractionDigits: 2 }
+                    )}`}
                     sx={{
-                      fontWeight: 800,
-                      background:
-                        "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                      fontWeight: 900,
                       color: "#fff",
-                      borderRadius: 2,
+                      background:
+                        "linear-gradient(135deg,#6d28d9,#8b5cf6)",
+                      borderRadius: 2.5,
+                      boxShadow:
+                        "0 10px 30px rgba(124,58,237,0.4)",
                     }}
                   />
 
                   <Chip
-                    label={dayjs(despesa.data).format(
-                      "DD/MM/YYYY"
-                    )}
+                    label={dayjs(despesa.data).format("DD/MM/YYYY")}
                     sx={{
-                      background: "#f1f5f9",
-                      fontWeight: 600,
+                      background: "#f5f3ff",
+                      fontWeight: 700,
+                      color: "#5b21b6",
+                      borderRadius: 2,
                     }}
                   />
 
                   <Chip
                     label={despesa.tipo}
                     sx={{
-                      fontWeight: 700,
-                      background:
-                        despesa.tipo === "Fixa"
-                          ? "#dcfce7"
-                          : "#fef3c7",
+                      fontWeight: 800,
+                      background: "#ede9fe",
+                      color: "#4c1d95",
+                      borderRadius: 2,
                     }}
                   />
                 </Stack>
@@ -268,55 +304,122 @@ export default function ListaDespesasCategoria({ categoria }) {
         </Stack>
       )}
 
-      {/* MODAL ULTRA PREMIUM */}
+      {/* MODAL EDITAR SURREAL PREMIUM */}
       <AnimatePresence>
         {openEditModal && (
-          <Modal open onClose={() => setOpenEditModal(false)}>
+          <Modal
+            open
+            onClose={() => setOpenEditModal(false)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(12px)",
+              background: "rgba(76,29,149,0.15)",
+              px: 2,
+            }}
+          >
             <MotionBox
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4 }}
               sx={{
-                p: 4,
-                borderRadius: 5,
-                m: "auto",
-                mt: "4%",
-                width: "95%",
-                maxWidth: 650,
-                background:
-                  "linear-gradient(145deg,#ffffff,#f8fafc)",
+                width: "100%",
+                maxWidth: 760,
+                maxHeight: "90vh",
+                display: "flex",
+                flexDirection: "column",
+                borderRadius: 6,
+                background: "#ffffff",
                 boxShadow:
-                  "0 40px 100px rgba(0,0,0,0.2)",
+                  "0 80px 220px rgba(88,28,135,0.5)",
+                overflow: "hidden",
+                border: "1px solid rgba(139,92,246,0.25)",
               }}
             >
-              <FormDespesa
-                despesa={despesaSelecionada}
-                categoriaId={categoria?.id}
-                onSuccess={() => {
-                  setOpenEditModal(false);
-                  fetchDespesas();
+              <Box
+                sx={{
+                  px: 3,
+                  py: 2.5,
+                  borderBottom: "1px solid rgba(139,92,246,0.2)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  background: "#faf7ff",
                 }}
-                onCancel={() =>
-                  setOpenEditModal(false)
-                }
-              />
+              >
+                <Typography
+                  sx={{
+                    fontWeight: 900,
+                    fontSize: 19,
+                    color: "#4c1d95",
+                  }}
+                >
+                  Editar Despesa
+                </Typography>
+
+                <Button
+                  onClick={() => setOpenEditModal(false)}
+                  sx={{
+                    minWidth: 38,
+                    height: 38,
+                    borderRadius: 2,
+                    fontWeight: 900,
+                    color: "#6d28d9",
+                  }}
+                >
+                  ✕
+                </Button>
+              </Box>
+
+              <Box
+                sx={{
+                  p: 3,
+                  overflowY: "auto",
+                  flex: 1,
+                  "&::-webkit-scrollbar": { width: 8 },
+                  "&::-webkit-scrollbar-thumb": {
+                    background: "#c4b5fd",
+                    borderRadius: 8,
+                  },
+                }}
+              >
+                <FormDespesa
+                  despesa={despesaSelecionada}
+                  categoriaId={categoria?.id}
+                  onSuccess={() => {
+                    setOpenEditModal(false);
+                    fetchDespesas();
+                  }}
+                  onCancel={() => setOpenEditModal(false)}
+                />
+              </Box>
             </MotionBox>
           </Modal>
         )}
       </AnimatePresence>
 
-      {/* DELETE DIALOG */}
+      {/* DIALOG DELETE PREMIUM */}
       <Dialog
         open={deleteConfirm.open}
         onClose={() =>
           setDeleteConfirm({ open: false, despesaId: null })
         }
+        PaperProps={{
+          sx: {
+            borderRadius: 5,
+            boxShadow: "0 40px 120px rgba(88,28,135,0.35)",
+            border: "1px solid rgba(139,92,246,0.25)",
+          },
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>
+        <DialogTitle
+          sx={{ fontWeight: 900, color: "#4c1d95" }}
+        >
           Confirmar exclusão
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ fontWeight: 500 }}>
           Deseja realmente excluir esta despesa?
         </DialogContent>
         <DialogActions>
@@ -327,13 +430,22 @@ export default function ListaDespesasCategoria({ categoria }) {
                 despesaId: null,
               })
             }
+            sx={{ textTransform: "none", fontWeight: 700 }}
           >
             Cancelar
           </Button>
           <Button
-            color="error"
             variant="contained"
             onClick={handleDelete}
+            sx={{
+              textTransform: "none",
+              fontWeight: 900,
+              borderRadius: 2,
+              background:
+                "linear-gradient(135deg,#6d28d9,#8b5cf6)",
+              boxShadow:
+                "0 15px 40px rgba(124,58,237,0.4)",
+            }}
           >
             Excluir
           </Button>

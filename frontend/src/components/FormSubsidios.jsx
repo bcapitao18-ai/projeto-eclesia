@@ -13,10 +13,10 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Divider,
   Fade,
+  Chip,
 } from "@mui/material";
-import { AttachMoney } from "@mui/icons-material";
+import { AttachMoney, AutoAwesome } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import api from "../api/axiosConfig";
 
@@ -26,6 +26,26 @@ export default function GestaoSubsidios() {
   const [ativo, setAtivo] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
+
+  const inputPremium = {
+    mb: 3,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "18px",
+      background: "rgba(255,255,255,0.95)",
+      backdropFilter: "blur(10px)",
+      transition: "all 0.3s ease",
+      "& fieldset": {
+        borderColor: "rgba(0,90,255,0.25)",
+      },
+      "&:hover": {
+        transform: "translateY(-2px)",
+        boxShadow: "0 8px 25px rgba(0,80,255,0.15)",
+      },
+      "&.Mui-focused": {
+        boxShadow: "0 0 0 2px rgba(0,80,255,0.25), 0 12px 35px rgba(0,80,255,0.2)",
+      },
+    },
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +65,6 @@ export default function GestaoSubsidios() {
       setValor("");
       setAtivo(true);
     } catch (error) {
-      console.error("Erro ao salvar subsídio:", error);
       setMensagem({ tipo: "error", texto: "Erro ao cadastrar subsídio." });
     } finally {
       setSalvando(false);
@@ -53,99 +72,79 @@ export default function GestaoSubsidios() {
   };
 
   return (
-    <Fade in timeout={800}>
+    <Fade in timeout={700}>
       <Box
         sx={{
           minHeight: "100vh",
-          p: { xs: 2, md: 6 },
           display: "flex",
-          justifyContent: "center",
           alignItems: "center",
+          justifyContent: "center",
+          p: { xs: 2, md: 6 },
           background:
-            "radial-gradient(circle at top left, #eaf3ff 0%, #ffffff 40%, #f1f7ff 100%)",
+            "linear-gradient(135deg, #f5f9ff 0%, #ffffff 40%, #eef3ff 100%)",
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 35 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
-          style={{ width: "100%", maxWidth: 650 }}
+          transition={{ duration: 0.8 }}
+          style={{ width: "100%", maxWidth: 720 }}
         >
           <Card
-            elevation={14}
             sx={{
-              borderRadius: "28px",
+              borderRadius: "32px",
               overflow: "hidden",
               background:
-                "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(235,245,255,0.97))",
-              backdropFilter: "blur(25px)",
-              border: "1px solid rgba(0,100,255,0.25)",
+                "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(240,245,255,0.95))",
+              backdropFilter: "blur(30px)",
+              border: "1px solid rgba(0,80,255,0.18)",
               boxShadow:
-                "0 20px 60px rgba(0,90,255,0.25), inset 0 0 60px rgba(255,255,255,0.05)",
+                "0 30px 80px rgba(0,60,200,0.18), inset 0 0 60px rgba(255,255,255,0.4)",
             }}
           >
-            {/* Header */}
+            {/* Header Luxuoso */}
             <Box
               sx={{
-                p: 3,
-                background: "linear-gradient(90deg, #0033cc 0%, #0055ff 100%)",
+                p: 4,
+                background:
+                  "linear-gradient(120deg, #002b8f, #0052ff, #3a7bff)",
+                color: "#fff",
                 textAlign: "center",
+                position: "relative",
               }}
             >
-              <Typography
-                variant="h5"
+              <AutoAwesome
                 sx={{
-                  fontWeight: 900,
-                  letterSpacing: "1px",
-                  color: "#fff",
-                  textTransform: "uppercase",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
+                  position: "absolute",
+                  top: 16,
+                  right: 20,
+                  opacity: 0.4,
+                  fontSize: 28,
                 }}
+              />
+              <AttachMoney sx={{ fontSize: 40, mb: 1 }} />
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 900, letterSpacing: 1 }}
               >
-                <AttachMoney sx={{ fontSize: 35, mr: 1, color: "white" }} />
-                Cadastro de Subsídio
+                Gestão de Subsídios
+              </Typography>
+              <Typography sx={{ opacity: 0.9, mt: 1 }}>
+                Cadastro premium de benefícios e subsídios salariais
               </Typography>
             </Box>
 
-            {/* Conteúdo */}
-            <CardContent sx={{ p: 4 }}>
-              <Divider
-                sx={{
-                  mb: 4,
-                  borderColor: "rgba(0,70,255,0.2)",
-                  boxShadow: "0 1px 10px rgba(0,90,255,0.25)",
-                }}
-              />
-
+            <CardContent sx={{ p: 5 }}>
               <form onSubmit={handleSubmit}>
-                {/* Nome do Subsídio */}
                 <TextField
                   label="Nome do Subsídio"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   fullWidth
                   required
-                  sx={{
-                    mb: 3,
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "rgba(255,255,255,0.97)",
-                      "& fieldset": { borderColor: "rgba(0,70,255,0.25)" },
-                      "&:hover fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 15px rgba(0,80,255,0.3)",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 25px rgba(0,80,255,0.4)",
-                      },
-                    },
-                  }}
+                  sx={inputPremium}
                 />
 
-                {/* Valor */}
                 <TextField
                   label="Valor (Kz)"
                   type="number"
@@ -153,70 +152,31 @@ export default function GestaoSubsidios() {
                   onChange={(e) => setValor(e.target.value)}
                   fullWidth
                   required
-                  sx={{
-                    mb: 3,
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "rgba(255,255,255,0.97)",
-                      "& fieldset": { borderColor: "rgba(0,70,255,0.25)" },
-                      "&:hover fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 15px rgba(0,80,255,0.3)",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 25px rgba(0,80,255,0.4)",
-                      },
-                    },
-                  }}
-                  inputProps={{ min: 0, step: "0.01" }}
+                  sx={inputPremium}
                 />
 
-                {/* Status */}
-                <FormControl fullWidth sx={{ mb: 3 }}>
+                <FormControl fullWidth sx={inputPremium}>
                   <InputLabel>Status</InputLabel>
                   <Select
                     value={ativo ? 1 : 0}
                     onChange={(e) => setAtivo(e.target.value === 1)}
-                    sx={{
-                      borderRadius: 3,
-                      backgroundColor: "rgba(255,255,255,0.97)",
-                      "& fieldset": { borderColor: "rgba(0,70,255,0.25)" },
-                      "&:hover fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 15px rgba(0,80,255,0.3)",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#0044ff",
-                        boxShadow: "0 0 25px rgba(0,80,255,0.4)",
-                      },
-                    }}
+                    label="Status"
                   >
-                    <MenuItem value={1}>Ativo</MenuItem>
-                    <MenuItem value={0}>Inativo</MenuItem>
+                    <MenuItem value={1}>
+                      <Chip label="Ativo" color="success" />
+                    </MenuItem>
+                    <MenuItem value={0}>
+                      <Chip label="Inativo" color="error" />
+                    </MenuItem>
                   </Select>
                 </FormControl>
 
-                {/* Mensagem */}
                 {mensagem.texto && (
                   <Alert
                     severity={mensagem.tipo}
                     sx={{
                       mb: 3,
-                      borderRadius: 3,
-                      backgroundColor:
-                        mensagem.tipo === "success"
-                          ? "rgba(0,80,255,0.08)"
-                          : "rgba(255,80,80,0.1)",
-                      color:
-                        mensagem.tipo === "success"
-                          ? "#0033cc"
-                          : "rgb(150,0,0)",
-                      border: `1px solid ${
-                        mensagem.tipo === "success"
-                          ? "rgba(0,80,255,0.25)"
-                          : "rgba(255,0,0,0.2)"
-                      }`,
+                      borderRadius: "16px",
                       fontWeight: 600,
                     }}
                   >
@@ -224,39 +184,29 @@ export default function GestaoSubsidios() {
                   </Alert>
                 )}
 
-                {/* Botão */}
                 <Button
-                  variant="contained"
                   fullWidth
                   type="submit"
                   disabled={salvando}
                   sx={{
-                    mt: 2,
-                    py: 1.8,
+                    py: 2,
                     fontWeight: 800,
                     fontSize: "1.1rem",
-                    borderRadius: "45px",
+                    borderRadius: "18px",
                     textTransform: "none",
                     color: "#fff",
                     background:
-                      "linear-gradient(90deg, #0033cc 0%, #0055ff 100%)",
+                      "linear-gradient(90deg, #002b8f, #0052ff, #3a7bff)",
                     boxShadow:
-                      "0 10px 35px rgba(0,60,255,0.45), inset 0 0 10px rgba(255,255,255,0.3)",
-                    transition: "all 0.35s ease",
+                      "0 15px 40px rgba(0,80,255,0.4)",
                     "&:hover": {
-                      background:
-                        "linear-gradient(90deg, #0044ff 0%, #0070ff 100%)",
-                      transform: "scale(1.045)",
+                      transform: "translateY(-3px) scale(1.02)",
                       boxShadow:
-                        "0 12px 45px rgba(0,80,255,0.55), inset 0 0 15px rgba(255,255,255,0.4)",
+                        "0 20px 55px rgba(0,80,255,0.55)",
                     },
                   }}
                 >
-                  {salvando ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    "Cadastrar"
-                  )}
+                  {salvando ? <CircularProgress size={26} color="inherit" /> : "Cadastrar Subsídio"}
                 </Button>
               </form>
             </CardContent>
