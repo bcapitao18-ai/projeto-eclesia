@@ -133,7 +133,6 @@ export default function ListaCategorias() {
       }}
     >
       <Box sx={{ maxWidth: 1400, mx: "auto", pt: 6 }}>
-        {/* HEADER PREMIUM SURREAL */}
         <Paper
           elevation={0}
           sx={{
@@ -194,7 +193,6 @@ export default function ListaCategorias() {
                 </Box>
               </Stack>
 
-              {/* KPIs (MESMA LÓGICA PRESERVADA) */}
               <Stack direction="row" spacing={2} flexWrap="wrap">
                 <Chip
                   icon={<TrendingUp />}
@@ -216,7 +214,6 @@ export default function ListaCategorias() {
               </Stack>
             </Stack>
 
-            {/* BOTÃO ORIGINAL (LÓGICA INTACTA) */}
             <Button
               startIcon={<Add />}
               onClick={() => setOpenModalCategoria(true)}
@@ -227,7 +224,6 @@ export default function ListaCategorias() {
           </Stack>
         </Paper>
 
-        {/* GRÁFICO (LÓGICA ORIGINAL) */}
         {!loading && categorias.length > 0 && (
           <Paper sx={chartPaper}>
             <Typography
@@ -237,11 +233,24 @@ export default function ListaCategorias() {
               Análise de Despesas por Categoria
             </Typography>
 
-            <Box sx={{ width: "100%", height: 300 }}>
+            <Box sx={{ width: "100%", height: 340 }}>
               <ResponsiveContainer>
-                <BarChart data={chartData}>
+                <BarChart data={chartData} margin={{ bottom: 60 }}>
                   <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                  <XAxis dataKey="nome" stroke="#64748b" />
+                  <XAxis
+                    dataKey="nome"
+                    stroke="#64748b"
+                    interval={0}
+                    angle={-25}
+                    height={80}
+                    textAnchor="end"
+                    tick={{ fontSize: 12, fontWeight: 600 }}
+                    tickFormatter={(value) =>
+                      value.length > 18
+                        ? value.substring(0, 18) + "..."
+                        : value
+                    }
+                  />
                   <Tooltip />
                   <Bar
                     dataKey="total"
@@ -299,7 +308,6 @@ export default function ListaCategorias() {
                             "Categoria financeira premium."}
                         </Typography>
 
-                        {/* PROGRESS (MESMA LÓGICA) */}
                         <Box mt={2.5}>
                           <LinearProgress
                             variant="determinate"
@@ -309,7 +317,6 @@ export default function ListaCategorias() {
                         </Box>
                       </Box>
 
-                      {/* TODOS OS BOTÕES ORIGINAIS PRESERVADOS */}
                       <Stack direction="row" spacing={1} flexWrap="wrap">
                         <Button
                           size="small"
@@ -370,7 +377,7 @@ export default function ListaCategorias() {
           </Stack>
         )}
 
-        {/* MODAL CATEGORIA (100% ORIGINAL) */}
+        {/* MODAL CATEGORIA - CORRIGIDO COM SCROLL */}
         <Modal
           open={openModalCategoria}
           onClose={() => setOpenModalCategoria(false)}
@@ -398,7 +405,7 @@ export default function ListaCategorias() {
           </Box>
         </Modal>
 
-        {/* MODAL DESPESA (CRÍTICO - PRESERVADO) */}
+        {/* MODAL DESPESA - TOTALMENTE CORRIGIDO (SCROLL + ALTURA LIMITADA) */}
         <Modal
           open={openModalDespesa}
           onClose={() => setOpenModalDespesa(false)}
@@ -426,7 +433,7 @@ export default function ListaCategorias() {
           </Box>
         </Modal>
 
-        {/* MODAL LISTA (PRESERVADO) */}
+        {/* MODAL LISTA - COM SCROLL */}
         <Modal
           open={openModalLista}
           onClose={() => setOpenModalLista(false)}
@@ -450,7 +457,6 @@ export default function ListaCategorias() {
           </Box>
         </Modal>
 
-        {/* DIALOG DELETE (MESMA LÓGICA) */}
         <Dialog
           open={deleteConfirm.open}
           onClose={() =>
@@ -481,7 +487,55 @@ export default function ListaCategorias() {
   );
 }
 
-/* ===== STYLES ULTRA PREMIUM ===== */
+/* ===== STYLES (CORREÇÃO CRÍTICA DE MODAL) ===== */
+const modalWrapper = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  minHeight: "100vh",
+  backdropFilter: "blur(6px)",
+  px: 2,
+  py: 4,
+  overflowY: "auto",
+};
+
+const modalPaper = {
+  width: "100%",
+  maxWidth: 620,
+  borderRadius: 4,
+  maxHeight: "90vh",
+  overflowY: "auto",
+};
+
+const modalPaperLarge = {
+  width: "100%",
+  maxWidth: 720,
+  borderRadius: 4,
+  maxHeight: "90vh",
+  overflowY: "auto",
+};
+
+const modalPaperXL = {
+  width: "100%",
+  maxWidth: 1000,
+  borderRadius: 4,
+  maxHeight: "90vh",
+  overflowY: "auto",
+};
+
+const modalHeader = {
+  px: 3,
+  py: 2,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderBottom: "1px solid #e2e8f0",
+  position: "sticky",
+  top: 0,
+  background: "#fff",
+  zIndex: 2,
+};
+
 const mainButton = {
   borderRadius: "999px",
   px: 4,
@@ -490,7 +544,6 @@ const mainButton = {
   textTransform: "none",
   background: "linear-gradient(135deg,#6366f1,#4f46e5)",
   color: "#fff",
-  boxShadow: "0 20px 60px rgba(79,70,229,0.4)",
 };
 
 const chartPaper = {
@@ -499,7 +552,6 @@ const chartPaper = {
   borderRadius: 5,
   background: "#ffffff",
   border: "1px solid #e2e8f0",
-  boxShadow: "0 20px 60px rgba(15,23,42,0.06)",
 };
 
 const cardPremium = {
@@ -507,12 +559,6 @@ const cardPremium = {
   borderRadius: 4,
   background: "#ffffff",
   border: "1px solid #e2e8f0",
-  boxShadow: "0 10px 40px rgba(15,23,42,0.05)",
-  transition: "all 0.3s ease",
-  "&:hover": {
-    transform: "translateY(-5px)",
-    boxShadow: "0 25px 70px rgba(15,23,42,0.1)",
-  },
 };
 
 const progressStyle = {
@@ -570,40 +616,4 @@ const kpiSuccess = {
   borderRadius: "999px",
   background: "linear-gradient(90deg,#22c55e,#4ade80)",
   color: "#fff",
-};
-
-const modalWrapper = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "100vh",
-  backdropFilter: "blur(6px)",
-  px: 2,
-};
-
-const modalPaper = {
-  width: "100%",
-  maxWidth: 620,
-  borderRadius: 4,
-};
-
-const modalPaperLarge = {
-  width: "100%",
-  maxWidth: 720,
-  borderRadius: 4,
-};
-
-const modalPaperXL = {
-  width: "100%",
-  maxWidth: 1000,
-  borderRadius: 4,
-};
-
-const modalHeader = {
-  px: 3,
-  py: 2,
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderBottom: "1px solid #e2e8f0",
 };
