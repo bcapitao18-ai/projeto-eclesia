@@ -15,42 +15,53 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Card,
-  CardContent,
   Divider,
   TextField,
+  Dialog,
+  DialogContent,
+  Stack,
+  Chip,
+  Avatar,
+  useTheme,
+  useMediaQuery,
+  Card,
+  CardContent,
 } from '@mui/material';
-import { FilterAlt, Summarize, PictureAsPdf } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import dayjs from 'dayjs';
 import api from '../../api/axiosConfig';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import ListaDespesasCategorias from '../../components/ListaDespesasCategorias';
+
+const MotionBox = motion(Box);
+const MotionPaper = motion(Paper);
+const MotionCard = motion(Card);
 
 export default function RelatorioDespesas() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [periodo, setPeriodo] = useState('mes');
   const [tipo, setTipo] = useState('');
   const [loading, setLoading] = useState(false);
-  const [despesas, setDespesas] = useState([]);
+
+  const [categorias, setCategorias] = useState([]);
   const [total, setTotal] = useState(0);
 
-  // NOVOS ESTADOS PARA PERSONALIZAR
-  const [dataInicial, setDataInicial] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
-  const [dataFinal, setDataFinal] = useState(dayjs().format('YYYY-MM-DD'));
+  const [openModal, setOpenModal] = useState(false);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
+
+  const [dataInicial, setDataInicial] = useState(
+    dayjs().startOf('month').format('YYYY-MM-DD')
+  );
+  const [dataFinal, setDataFinal] = useState(
+    dayjs().format('YYYY-MM-DD')
+  );
 
   const calcularPeriodo = (p) => {
     const agora = dayjs();
     let inicio;
 
-    // SE FOR PERSONALIZADO, USA AS DATAS MANUAIS
     if (p === 'personalizado') {
       return {
         start: dataInicial,
@@ -59,16 +70,32 @@ export default function RelatorioDespesas() {
     }
 
     switch (p) {
-      case 'hoje': inicio = agora.startOf('day'); break;
-      case 'semana': inicio = agora.startOf('week'); break;
-      case 'mes': inicio = agora.startOf('month'); break;
-      case 'trimestre': inicio = agora.subtract(3, 'month').startOf('day'); break;
-      case 'semestre': inicio = agora.subtract(6, 'month').startOf('day'); break;
-      case 'ano': inicio = agora.startOf('year'); break;
-      default: inicio = agora.startOf('month');
+      case 'hoje':
+        inicio = agora.startOf('day');
+        break;
+      case 'semana':
+        inicio = agora.startOf('week');
+        break;
+      case 'mes':
+        inicio = agora.startOf('month');
+        break;
+      case 'trimestre':
+        inicio = agora.subtract(3, 'month').startOf('day');
+        break;
+      case 'semestre':
+        inicio = agora.subtract(6, 'month').startOf('day');
+        break;
+      case 'ano':
+        inicio = agora.startOf('year');
+        break;
+      default:
+        inicio = agora.startOf('month');
     }
 
-    return { start: inicio.format('YYYY-MM-DD'), end: agora.format('YYYY-MM-DD') };
+    return {
+      start: inicio.format('YYYY-MM-DD'),
+      end: agora.format('YYYY-MM-DD'),
+    };
   };
 
   const buscarRelatorio = async () => {
@@ -84,277 +111,458 @@ export default function RelatorioDespesas() {
         },
       });
 
-      setDespesas(res.data);
-      const soma = res.data.reduce((acc, d) => acc + parseFloat(d.valor), 0);
+      const data = res.data || [];
+
+      const filtradas = data.filter(
+        (c) => parseFloat(c.totalDespesas || 0) > 0
+      );
+
+      setCategorias(filtradas);
+
+      const soma = filtradas.reduce(
+        (acc, c) => acc + parseFloat(c.totalDespesas || 0),
+        0
+      );
       setTotal(soma);
     } catch (err) {
-      console.error('Erro ao buscar relatório de despesas:', err);
+      console.error('Erro ao buscar relatório:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const dadosPizza = useMemo(() => {
-    const mapa = {};
-    despesas.forEach((d) => {
-      const t = d.tipo || 'Outros';
-      mapa[t] = (mapa[t] || 0) + parseFloat(d.valor);
-    });
-    return Object.entries(mapa).map(([name, value]) => ({ name, value }));
-  }, [despesas]);
+  useEffect(() => {
+    buscarRelatorio();
+  }, []);
 
-  const cores = ['#f44336', '#ff9800', '#4caf50', '#2196f3', '#9c27b0'];
-
-  const exportarPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Relatório de Despesas', 14, 18);
-    doc.setFontSize(12);
-    doc.text(`Total gasto: Kz ${total.toFixed(2)}`, 14, 28);
-
-    const rows = despesas.map((d) => [
-      dayjs(d.data).format('DD/MM/YYYY'),
-      d.descricao,
-      d.tipo,
-      parseFloat(d.valor).toFixed(2),
-      d.categoria || '-',
-    ]);
-
-    autoTable(doc, {
-      head: [['Data', 'Descrição', 'Tipo', 'Valor (Kz)', 'Categoria']],
-      body: rows,
-      startY: 36,
-      styles: { fontSize: 10 },
-    });
-
-    doc.save('relatorio-despesas.pdf');
-  };
+  const temDados = useMemo(() => categorias.length > 0, [categorias]);
 
   return (
-    <Box
+    <MotionBox
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
       sx={{
         minHeight: '100vh',
-        p: { xs: 2, md: 6 },
-        background: 'linear-gradient(135deg,#f44336 0%, #9c27b0 100%)',
+        px: { xs: 1.5, sm: 2, md: 6 },
+        py: { xs: 3, md: 6 },
         display: 'flex',
         justifyContent: 'center',
+        background: `
+          radial-gradient(circle at 0% 0%, rgba(239,68,68,0.12) 0%, transparent 40%),
+          radial-gradient(circle at 100% 0%, rgba(220,38,38,0.12) 0%, transparent 40%),
+          linear-gradient(180deg,#ffffff 0%, #fff5f5 100%)
+        `,
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        style={{ width: '100%', maxWidth: 1100 }}
-      >
-        <Card elevation={8} sx={{ borderRadius: 4, overflow: 'hidden', backdropFilter: 'blur(6px)' }}>
-          <Box
-            sx={{
-              p: 4,
-              background: 'linear-gradient(90deg, rgba(244,67,54,1) 0%, rgba(156,39,176,1) 100%)',
-            }}
+      <Box sx={{ width: '100%', maxWidth: 1250 }}>
+        {/* HEADER */}
+        <Box mb={4}>
+          <Stack
+            direction={isMobile ? 'column' : 'row'}
+            spacing={2}
+            alignItems={isMobile ? 'flex-start' : 'center'}
           >
-            <Typography variant="h4" fontWeight="bold" color="white" textAlign="center">
-              <Summarize sx={{ fontSize: 40, mr: 1, verticalAlign: 'middle' }} />
-              Relatório de Despesas
-            </Typography>
-          </Box>
-
-          <CardContent>
-            {/* Filtros */}
-            <Box
+            <Avatar
               sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 2,
-                mb: 4,
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: { xs: 55, md: 70 },
+                height: { xs: 55, md: 70 },
+                borderRadius: 4,
+                fontSize: { xs: 24, md: 30 },
+                background:
+                  'linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)',
               }}
             >
-              <FormControl sx={{ minWidth: 160 }}>
-                <InputLabel>Período</InputLabel>
-                <Select
-                  value={periodo}
-                  onChange={(e) => setPeriodo(e.target.value)}
-                >
-                  <MenuItem value="hoje">Hoje</MenuItem>
-                  <MenuItem value="semana">Semana</MenuItem>
-                  <MenuItem value="mes">Mês</MenuItem>
-                  <MenuItem value="trimestre">Trimestre</MenuItem>
-                  <MenuItem value="semestre">Semestre</MenuItem>
-                  <MenuItem value="ano">Ano</MenuItem>
-                  <MenuItem value="personalizado">
-                    Personalizar (Escolher datas)
-                  </MenuItem>
-                </Select>
-              </FormControl>
+              💎
+            </Avatar>
 
-              {/* CAMPOS DE DATA APENAS QUANDO FOR PERSONALIZADO */}
-              {periodo === 'personalizado' && (
-                <>
-                  <TextField
-                    label="Data Inicial"
-                    type="date"
-                    value={dataInicial}
-                    onChange={(e) => setDataInicial(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ minWidth: 180 }}
-                  />
-
-                  <TextField
-                    label="Data Final"
-                    type="date"
-                    value={dataFinal}
-                    onChange={(e) => setDataFinal(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ minWidth: 180 }}
-                  />
-                </>
-              )}
-
-              <FormControl sx={{ minWidth: 180 }}>
-                <InputLabel>Tipo de Despesa</InputLabel>
-                <Select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                  <MenuItem value="">Todas</MenuItem>
-                  <MenuItem value="Fixa">Fixa</MenuItem>
-                  <MenuItem value="Variável">Variável</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Button
-                variant="contained"
-                startIcon={<FilterAlt />}
-                onClick={buscarRelatorio}
+            <Box>
+              <Typography
                 sx={{
-                  background: 'linear-gradient(90deg,#f44336,#9c27b0)',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  px: 3,
-                  py: 1.2,
-                  borderRadius: 3,
-                  '&:hover': { background: 'linear-gradient(90deg,#e53935,#8e24aa)' },
+                  fontWeight: 900,
+                  color: '#7f1d1d',
+                  fontSize: { xs: 26, sm: 32, md: 42 },
                 }}
               >
-                Gerar Relatório
-              </Button>
+                Relatório de Despesas
+              </Typography>
 
-              <Button
-                variant="outlined"
-                startIcon={<PictureAsPdf />}
-                onClick={exportarPDF}
-                disabled={!despesas.length}
+              <Typography
                 sx={{
-                  borderColor: '#f44336',
-                  color: '#f44336',
-                  fontWeight: 'bold',
-                  px: 3,
-                  py: 1.2,
-                  borderRadius: 3,
-                  '&:hover': {
-                    background: 'rgba(244,67,54,0.1)',
-                    borderColor: '#e53935',
-                  },
+                  color: '#b91c1c',
+                  fontWeight: 600,
+                  fontSize: { xs: 14, md: 16 },
                 }}
               >
-                Exportar PDF
-              </Button>
+                Análise financeira por categoria
+              </Typography>
             </Box>
+          </Stack>
 
-            <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ mt: 3, opacity: 0.4 }} />
+        </Box>
 
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <>
-                <Typography
-                  variant="h6"
-                  mb={2}
-                  sx={{ textAlign: 'center', fontWeight: 'bold' }}
-                >
-                  Total gasto:{' '}
-                  <Box component="span" sx={{ color: '#f44336' }}>
-                    Kz {total.toFixed(2)}
-                  </Box>
-                </Typography>
+        {/* CARD PRINCIPAL */}
+        <MotionPaper
+          sx={{
+            p: { xs: 2, sm: 3, md: 4 },
+            borderRadius: { xs: 4, md: 7 },
+            background: '#ffffff',
+            boxShadow: '0 40px 120px rgba(220,38,38,0.12)',
+            border: '1px solid rgba(239,68,68,0.18)',
+          }}
+        >
+          {/* FILTROS RESPONSIVOS */}
+          <Stack
+            direction={isMobile ? 'column' : 'row'}
+            flexWrap="wrap"
+            spacing={2}
+            justifyContent="center"
+            alignItems="center"
+            mb={4}
+          >
+            <FormControl sx={{ minWidth: 180, width: isMobile ? '100%' : 'auto' }}>
+              <InputLabel>Período</InputLabel>
+              <Select
+                value={periodo}
+                label="Período"
+                onChange={(e) => setPeriodo(e.target.value)}
+              >
+                <MenuItem value="hoje">Hoje</MenuItem>
+                <MenuItem value="semana">Semana</MenuItem>
+                <MenuItem value="mes">Mês</MenuItem>
+                <MenuItem value="trimestre">Trimestre</MenuItem>
+                <MenuItem value="semestre">Semestre</MenuItem>
+                <MenuItem value="ano">Ano</MenuItem>
+                <MenuItem value="personalizado">Personalizar</MenuItem>
+              </Select>
+            </FormControl>
 
+            {periodo === 'personalizado' && (
+              <Stack
+                direction={isMobile ? 'column' : 'row'}
+                spacing={2}
+                sx={{ width: isMobile ? '100%' : 'auto' }}
+              >
+                <TextField
+                  fullWidth
+                  label="Data Inicial"
+                  type="date"
+                  value={dataInicial}
+                  onChange={(e) => setDataInicial(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  fullWidth
+                  label="Data Final"
+                  type="date"
+                  value={dataFinal}
+                  onChange={(e) => setDataFinal(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Stack>
+            )}
+
+            <FormControl sx={{ minWidth: 200, width: isMobile ? '100%' : 'auto' }}>
+              <InputLabel>Tipo de Despesa</InputLabel>
+              <Select
+                value={tipo}
+                label="Tipo de Despesa"
+                onChange={(e) => setTipo(e.target.value)}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                <MenuItem value="Fixa">Fixa</MenuItem>
+                <MenuItem value="Variável">Variável</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Button
+              fullWidth={isMobile}
+              onClick={buscarRelatorio}
+              sx={{
+                px: 5,
+                py: 1.4,
+                borderRadius: 3,
+                fontWeight: 900,
+                color: '#fff',
+                background:
+                  'linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)',
+              }}
+            >
+              Gerar Relatório
+            </Button>
+          </Stack>
+
+          {/* TOTAL */}
+          <Box textAlign="center" mb={4}>
+            <Chip
+              label={`Total no período: Kz ${total.toFixed(2)}`}
+              sx={{
+                fontWeight: 900,
+                fontSize: { xs: 14, md: 17 },
+                px: 3,
+                py: 2,
+                color: '#fff',
+                borderRadius: 3,
+                background:
+                  'linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)',
+              }}
+            />
+          </Box>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress size={50} sx={{ color: '#dc2626' }} />
+            </Box>
+          ) : !temDados ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: '#7f1d1d' }}>
+                Nenhuma despesa encontrada
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              {/* MOBILE = CARDS (SEM TABELA) */}
+              {isMobile ? (
+                <Stack spacing={2}>
+                  <AnimatePresence>
+                    {categorias.map((cat, index) => (
+                      <MotionCard
+                        key={cat.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        sx={{
+                          borderRadius: 4,
+                          border: '1px solid rgba(239,68,68,0.2)',
+                          boxShadow: '0 20px 60px rgba(220,38,38,0.12)',
+                        }}
+                      >
+                        <CardContent>
+                          {/* CATEGORIA */}
+                          <Typography
+                            sx={{
+                              fontWeight: 900,
+                              fontSize: 18,
+                              color: '#7f1d1d',
+                              mb: 1,
+                            }}
+                          >
+                            {cat.nome}
+                          </Typography>
+
+                          {/* BOTÃO LOGO ABAIXO DO NOME (COMO PEDISTE) */}
+                          <Button
+                            fullWidth
+                            onClick={() => {
+                              setCategoriaSelecionada(cat);
+                              setOpenModal(true);
+                            }}
+                            sx={{
+                              mb: 2,
+                              fontWeight: 800,
+                              borderRadius: 3,
+                              color: '#fff',
+                              background:
+                                'linear-gradient(135deg,#7f1d1d,#dc2626,#ef4444)',
+                            }}
+                          >
+                            Ver Despesas
+                          </Button>
+
+                          {/* DESCRIÇÃO */}
+                          <Typography
+                            sx={{ fontSize: 13, color: '#6b7280', mb: 1 }}
+                          >
+                            {cat.descricao || 'Sem descrição'}
+                          </Typography>
+
+                          {/* DADOS ORGANIZADOS PARA MOBILE */}
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            mt={1}
+                          >
+                            <Box>
+                              <Typography
+                                sx={{ fontSize: 12, color: '#9ca3af' }}
+                              >
+                                Quantidade
+                              </Typography>
+                              <Typography sx={{ fontWeight: 800 }}>
+                                {cat.quantidadeDespesas || 0}
+                              </Typography>
+                            </Box>
+
+                            <Box textAlign="right">
+                              <Typography
+                                sx={{ fontSize: 12, color: '#9ca3af' }}
+                              >
+                                Total (Kz)
+                              </Typography>
+                              <Typography
+                                sx={{
+                                  fontWeight: 900,
+                                  color: '#b91c1c',
+                                  fontSize: 16,
+                                }}
+                              >
+                                {parseFloat(cat.totalDespesas || 0).toFixed(2)}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </CardContent>
+                      </MotionCard>
+                    ))}
+                  </AnimatePresence>
+                </Stack>
+              ) : (
+                /* DESKTOP = TABELA NORMAL (INALTERADA) */
                 <TableContainer
                   component={Paper}
                   sx={{
-                    borderRadius: 3,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                    mb: 4,
+                    borderRadius: 5,
+                    border: '1px solid rgba(239,68,68,0.15)',
+                    overflowX: 'auto',
                   }}
                 >
-                  <Table>
-                    <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead sx={{ background: '#fff1f2' }}>
                       <TableRow>
-                        <TableCell>Data</TableCell>
-                        <TableCell>Descrição</TableCell>
-                        <TableCell>Tipo</TableCell>
-                        <TableCell align="right">Valor (Kz)</TableCell>
-                        <TableCell>Categoria</TableCell>
+                        <TableCell sx={{ fontWeight: 900 }}>Categoria</TableCell>
+                        <TableCell sx={{ fontWeight: 900 }}>Descrição</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 900 }}>
+                          Qtd Despesas
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900 }}>
+                          Total (Kz)
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 900 }}>
+                          Ações
+                        </TableCell>
                       </TableRow>
                     </TableHead>
+
                     <TableBody>
-                      {despesas.map((d) => (
-                        <TableRow
-                          key={d.id}
-                          hover
-                          sx={{
-                            '&:nth-of-type(even)': { backgroundColor: '#fafafa' },
-                          }}
-                        >
-                          <TableCell>{dayjs(d.data).format('DD/MM/YYYY')}</TableCell>
-                          <TableCell>{d.descricao}</TableCell>
-                          <TableCell>{d.tipo}</TableCell>
-                          <TableCell align="right">
-                            {parseFloat(d.valor).toFixed(2)}
+                      {categorias.map((cat) => (
+                        <TableRow key={cat.id} hover>
+                          <TableCell sx={{ fontWeight: 800, color: '#7f1d1d' }}>
+                            {cat.nome}
                           </TableCell>
-                          <TableCell>{d.categoria || '-'}</TableCell>
+                          <TableCell>
+                            {cat.descricao || '-'}
+                          </TableCell>
+                          <TableCell align="center">
+                            {cat.quantidadeDespesas || 0}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 900, color: '#b91c1c' }}>
+                            {parseFloat(cat.totalDespesas || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Button
+                              size="small"
+                              onClick={() => {
+                                setCategoriaSelecionada(cat);
+                                setOpenModal(true);
+                              }}
+                              sx={{
+                                fontWeight: 800,
+                                borderRadius: 3,
+                                color: '#b91c1c',
+                                border: '1px solid rgba(220,38,38,0.4)',
+                                background: '#fff1f2',
+                              }}
+                            >
+                              Ver Despesas
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
+              )}
+            </>
+          )}
+        </MotionPaper>
 
-                {dadosPizza.length > 0 && (
-                  <Box sx={{ height: 350 }}>
-                    <Typography
-                      variant="h6"
-                      textAlign="center"
-                      mb={2}
-                      fontWeight="bold"
-                    >
-                      Distribuição por Tipo de Despesa
-                    </Typography>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dadosPizza}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={120}
-                          label
-                        >
-                          {dadosPizza.map((_, i) => (
-                            <Cell key={i} fill={cores[i % cores.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-    </Box>
+     {/* MODAL COM AÇÃO DE FECHAR (RESPONSIVO E PREMIUM) */}
+<Dialog
+  open={openModal}
+  onClose={() => setOpenModal(false)}
+  maxWidth="lg"
+  fullWidth
+  fullScreen={isMobile}
+  PaperProps={{
+    sx: {
+      borderRadius: { xs: 0, md: 4 },
+      overflow: 'hidden',
+    },
+  }}
+>
+  {/* HEADER DO MODAL COM BOTÃO FECHAR */}
+  <Box
+    sx={{
+      px: { xs: 2, md: 3 },
+      py: 2,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      background:
+        'linear-gradient(135deg,#fff1f2,#ffe4e6)',
+      borderBottom: '1px solid rgba(239,68,68,0.25)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+    }}
+  >
+    <Typography
+      sx={{
+        fontWeight: 900,
+        fontSize: { xs: 16, md: 20 },
+        color: '#7f1d1d',
+        pr: 2,
+      }}
+    >
+      Despesas da Categoria: {categoriaSelecionada?.nome || ''}
+    </Typography>
+
+    <Button
+      onClick={() => setOpenModal(false)}
+      sx={{
+        fontWeight: 900,
+        borderRadius: 2,
+        minWidth: '40px',
+        height: '40px',
+        color: '#b91c1c',
+        background: '#fff',
+        border: '1px solid rgba(220,38,38,0.3)',
+        '&:hover': {
+          background: '#ffe4e6',
+          transform: 'scale(1.05)',
+        },
+      }}
+    >
+      ✕
+    </Button>
+  </Box>
+
+  {/* CONTEÚDO COM SCROLL INTERNO */}
+  <DialogContent
+    sx={{
+      p: { xs: 2, md: 3 },
+      overflowY: 'auto',
+      maxHeight: { xs: '100vh', md: '80vh' },
+      background: '#ffffff',
+    }}
+  >
+    <ListaDespesasCategorias
+      categoria={categoriaSelecionada}
+      onClose={() => setOpenModal(false)}
+    />
+  </DialogContent>
+</Dialog>
+      </Box>
+    </MotionBox>
   );
 }

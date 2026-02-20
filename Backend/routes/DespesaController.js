@@ -393,10 +393,7 @@ router.get('/lista/tipos-despesa', auth, async (req, res) => {
 
 
 
-
-
-
-// GET /relatorio/despesas - relatório de despesas filtrado pelo usuário logado
+// GET /relatorio/despesas - relatório por CATEGORIA (com período)
 router.get('/relatorio/despesas', auth, async (req, res) => {
   try {
     const { startDate, endDate, tipo } = req.query;
@@ -405,48 +402,86 @@ router.get('/relatorio/despesas', auth, async (req, res) => {
     console.log('📅 Filtros recebidos:', { startDate, endDate, tipo });
     console.log('🏢 Usuário logado:', { SedeId, FilhalId });
 
-    let where = {};
+    // 🔥 Filtro de despesas (IMPORTANTE)
+    let whereDespesas = {};
 
-    // 📆 Corrige o filtro de datas
+    // 📆 FILTRO DE PERÍODO (MANTIDO COMO PEDISTE)
     if (startDate && endDate) {
       const inicio = new Date(`${startDate}T00:00:00`);
       const fim = new Date(`${endDate}T23:59:59`);
-      where.data = { [Op.between]: [inicio, fim] };
-      console.log('🗓️ Intervalo de datas aplicado:', where.data);
+      whereDespesas.data = { [Op.between]: [inicio, fim] };
     }
 
-    // 🧾 Filtro de tipo
+    // 🧾 Filtro por tipo (Fixa / Variável)
     if (tipo) {
-      where.tipo = tipo;
+      whereDespesas.tipo = tipo;
     }
 
     // 🏛️ Filtro hierárquico
     if (FilhalId) {
-      where.FilhalId = FilhalId;
+      whereDespesas.FilhalId = FilhalId;
     } else if (SedeId) {
-      where.SedeId = SedeId;
+      whereDespesas.SedeId = SedeId;
     }
 
-    console.log('🔎 Filtro final aplicado:', JSON.stringify(where, null, 2));
-
-    const despesas = await Despesas.findAll({
-      where,
-      order: [['data', 'DESC'], ['createdAt', 'DESC']],
+    const categorias = await Categorias.findAll({
+      where: {
+        ativa: 1,
+        SedeId: SedeId || null,
+        FilhalId: FilhalId || null,
+      },
+      include: [
+        {
+          model: CategoriaDespesas,
+          attributes: [],
+          include: [
+            {
+              model: Despesas,
+              attributes: [],
+              where: whereDespesas, // 🔥 FILTRO POR PERÍODO AQUI
+              required: false, // MUITO IMPORTANTE (mostra categorias sem despesas)
+            },
+          ],
+          required: false,
+        },
+      ],
+      attributes: [
+        'id',
+        'nome',
+        'descricao',
+        [
+          Sequelize.fn(
+            'COALESCE',
+            Sequelize.fn(
+              'SUM',
+              Sequelize.col('CategoriaDespesas->Despesa.valor')
+            ),
+            0
+          ),
+          'totalDespesas',
+        ],
+        [
+          Sequelize.fn(
+            'COUNT',
+            Sequelize.col('CategoriaDespesas->Despesa.id')
+          ),
+          'quantidadeDespesas',
+        ],
+      ],
+      group: ['Categoria.id'],
+      order: [[Sequelize.literal('totalDespesas'), 'DESC']],
+      subQuery: false,
     });
 
-    console.log(`✅ ${despesas.length} despesas encontradas.`);
-    return res.status(200).json(despesas);
+    console.log(`✅ ${categorias.length} categorias no relatório.`);
+    return res.status(200).json(categorias);
   } catch (error) {
-    console.error('❌ Erro ao gerar relatório de despesas:', error);
-    return res.status(500).json({ message: 'Erro ao gerar relatório de despesas.' });
+    console.error('❌ Erro ao gerar relatório por categoria:', error);
+    return res.status(500).json({
+      message: 'Erro ao gerar relatório de despesas por categoria.',
+    });
   }
 });
-
-
-
-
-
-
 
 
 
