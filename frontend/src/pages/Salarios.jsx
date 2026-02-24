@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MonetizationOn,
   People,
   Payment,
   Discount,
@@ -29,12 +28,21 @@ import FormDescontos from "../components/FormDescontos";
 import FormSalarios from "../components/FormSalarios";
 import ListaFuncionarios from "../components/ListaFuncionarios";
 
+// 🔥 NOVO: LISTA DE SALÁRIOS EFETUADOS (VAI USAR A ROTA /salarios)
+import ListaSalarios from "../components/ListaSalarios";
+
 export default function GestaoSalarios() {
   const [formAtivo, setFormAtivo] = useState("funcionarios");
-  const [openModalFuncionarios, setOpenModalFuncionarios] = useState(false);
 
+  // MODAL FUNCIONÁRIOS
+  const [openModalFuncionarios, setOpenModalFuncionarios] = useState(false);
   const handleOpenFuncionarios = () => setOpenModalFuncionarios(true);
   const handleCloseFuncionarios = () => setOpenModalFuncionarios(false);
+
+  // 🔥 NOVO: MODAL SALÁRIOS EFETUADOS
+  const [openModalSalarios, setOpenModalSalarios] = useState(false);
+  const handleOpenSalarios = () => setOpenModalSalarios(true);
+  const handleCloseSalarios = () => setOpenModalSalarios(false);
 
   const modulos = {
     funcionarios: {
@@ -100,7 +108,7 @@ export default function GestaoSalarios() {
             </Button>
           </Box>
 
-          {/* FORMULÁRIO PREMIUM */}
+          {/* FORMULÁRIO */}
           <Box
             sx={{
               p: 4,
@@ -113,7 +121,7 @@ export default function GestaoSalarios() {
             <FormFuncionarios />
           </Box>
 
-          {/* MODAL SURREAL CENTRALIZADO (CORRIGIDO) */}
+          {/* MODAL FUNCIONÁRIOS */}
           <AnimatePresence>
             {openModalFuncionarios && (
               <Modal
@@ -137,7 +145,7 @@ export default function GestaoSalarios() {
                   exit={{ opacity: 0, scale: 0.9, y: 60 }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   sx={{
-                    position: "relative", // 🔥 CORREÇÃO DO BUG
+                    position: "relative",
                     width: "100%",
                     maxWidth: "1500px",
                     maxHeight: "92vh",
@@ -152,7 +160,6 @@ export default function GestaoSalarios() {
                     border: "1px solid rgba(255,255,255,0.6)",
                   }}
                 >
-                  {/* HEADER DO MODAL LUXUOSO */}
                   <Box
                     sx={{
                       px: 4,
@@ -163,22 +170,11 @@ export default function GestaoSalarios() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
-                    <Box>
-                      <Typography
-                        variant="h5"
-                        fontWeight={900}
-                        sx={{ letterSpacing: "0.6px" }}
-                      >
-                        Lista Premium de Funcionários
-                      </Typography>
-                      <Typography sx={{ opacity: 0.85, fontSize: "0.9rem" }}>
-                        Visualização corporativa • Controlo avançado • Interface
-                        surreal
-                      </Typography>
-                    </Box>
+                    <Typography variant="h5" fontWeight={900}>
+                      Lista Premium de Funcionários
+                    </Typography>
 
                     <IconButton
                       onClick={handleCloseFuncionarios}
@@ -186,35 +182,13 @@ export default function GestaoSalarios() {
                         background: "rgba(255,255,255,0.12)",
                         color: "#fff",
                         borderRadius: "14px",
-                        backdropFilter: "blur(10px)",
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          background: "rgba(255,255,255,0.2)",
-                          transform: "scale(1.1) rotate(90deg)",
-                        },
                       }}
                     >
                       <Close />
                     </IconButton>
                   </Box>
 
-                  {/* CORPO COM SCROLL INTERNO PREMIUM */}
-                  <Box
-                    sx={{
-                      p: 4,
-                      overflowY: "auto",
-                      flex: 1,
-                      background:
-                        "radial-gradient(circle at top, #ffffff 0%, #f1f5f9 100%)",
-                      "&::-webkit-scrollbar": {
-                        width: "8px",
-                      },
-                      "&::-webkit-scrollbar-thumb": {
-                        background: "#cbd5f5",
-                        borderRadius: "10px",
-                      },
-                    }}
-                  >
+                  <Box sx={{ p: 4, overflowY: "auto", flex: 1 }}>
                     <ListaFuncionarios />
                   </Box>
                 </Box>
@@ -224,23 +198,176 @@ export default function GestaoSalarios() {
         </Stack>
       ),
     },
+
     subsidios: {
       titulo: "Gestão de Subsídios",
       descricao:
         "Configure benefícios e incentivos salariais com precisão financeira e gestão estratégica empresarial.",
       componente: <FormSubsidios />,
     },
+
     descontos: {
       titulo: "Gestão de Descontos",
       descricao:
         "Defina políticas de descontos com segurança, transparência e controlo financeiro avançado.",
       componente: <FormDescontos />,
     },
+
+    // 🔥 AQUI ESTÁ A MUDANÇA PRINCIPAL
     salarios: {
       titulo: "Processamento Salarial",
       descricao:
         "Execute o processamento completo de salários com auditoria, eficiência e segurança corporativa.",
-      componente: <FormSalarios />,
+      componente: (
+        <Stack spacing={4}>
+          {/* HEADER COM BOTÃO VER SALÁRIOS */}
+          <Box
+            sx={{
+              p: 3,
+              borderRadius: "24px",
+              background:
+                "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
+              color: "#fff",
+              boxShadow: "0 25px 60px rgba(2,6,23,0.35)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography variant="h6" fontWeight={900}>
+                Painel de Processamento Salarial
+              </Typography>
+              <Typography sx={{ opacity: 0.85, fontSize: "0.92rem" }}>
+                Processamento, auditoria e visualização dos salários efetuados
+              </Typography>
+            </Box>
+
+            {/* 🔥 NOVO BOTÃO */}
+            <Button
+              startIcon={<Visibility />}
+              onClick={handleOpenSalarios}
+              sx={{
+                textTransform: "none",
+                fontWeight: 900,
+                px: 3,
+                py: 1.4,
+                borderRadius: "16px",
+                color: "#fff",
+                background:
+                  "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                boxShadow: "0 15px 40px rgba(22,163,74,0.45)",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "translateY(-3px) scale(1.03)",
+                  background:
+                    "linear-gradient(135deg, #15803d 0%, #166534 100%)",
+                },
+              }}
+            >
+              Ver Salários Efetuados
+            </Button>
+          </Box>
+
+          {/* FORM DE PROCESSAMENTO (INALTERADO) */}
+          <Box
+            sx={{
+              p: 4,
+              borderRadius: "28px",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 30px 80px rgba(2,6,23,0.06)",
+            }}
+          >
+            <FormSalarios />
+          </Box>
+
+          {/* 🔥 MODAL LISTA DE SALÁRIOS EFETUADOS */}
+          <AnimatePresence>
+            {openModalSalarios && (
+              <Modal
+                open={openModalSalarios}
+                onClose={handleCloseSalarios}
+                closeAfterTransition
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backdropFilter: "blur(18px)",
+                  background:
+                    "linear-gradient(180deg, rgba(2,6,23,0.75) 0%, rgba(15,23,42,0.9) 100%)",
+                  p: 2,
+                }}
+              >
+                <Box
+                  component={motion.div}
+                  initial={{ opacity: 0, scale: 0.85, y: 80 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 60 }}
+                  transition={{ duration: 0.4 }}
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                    maxWidth: "1500px",
+                    maxHeight: "92vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: "32px",
+                    overflow: "hidden",
+                    background:
+                      "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                    boxShadow:
+                      "0 80px 180px rgba(2,6,23,0.7), 0 20px 60px rgba(0,0,0,0.25)",
+                    border: "1px solid rgba(255,255,255,0.6)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      px: 4,
+                      py: 3,
+                      background:
+                        "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
+                      color: "#fff",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Typography variant="h5" fontWeight={900}>
+                      Lista de Salários Efetuados
+                    </Typography>
+
+                    <IconButton
+                      onClick={handleCloseSalarios}
+                      sx={{
+                        background: "rgba(255,255,255,0.12)",
+                        color: "#fff",
+                        borderRadius: "14px",
+                      }}
+                    >
+                      <Close />
+                    </IconButton>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      p: 4,
+                      overflowY: "auto",
+                      flex: 1,
+                      background:
+                        "radial-gradient(circle at top, #ffffff 0%, #f1f5f9 100%)",
+                    }}
+                  >
+                    <ListaSalarios />
+                  </Box>
+                </Box>
+              </Modal>
+            )}
+          </AnimatePresence>
+        </Stack>
+      ),
     },
   };
 
@@ -250,10 +377,8 @@ export default function GestaoSalarios() {
     px: 3,
     py: 2,
     fontWeight: 900,
-    fontSize: "0.95rem",
     textTransform: "none",
     width: "100%",
-    letterSpacing: "0.3px",
     color: active ? "#ffffff" : "#0f172a",
     background: active
       ? "linear-gradient(135deg, #020617 0%, #1e3a8a 100%)"
@@ -264,7 +389,6 @@ export default function GestaoSalarios() {
     boxShadow: active
       ? "0 20px 45px rgba(30,58,138,0.35)"
       : "0 6px 18px rgba(0,0,0,0.05)",
-    transition: "all 0.35s ease",
     "&:hover": {
       transform: "translateX(6px) scale(1.02)",
       background: active
@@ -282,7 +406,6 @@ export default function GestaoSalarios() {
           "linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #eef2f7 100%)",
         px: { xs: 2, md: 6 },
         py: 5,
-        fontFamily: "'Inter', 'Poppins', sans-serif",
       }}
     >
       <Breadcrumbs
@@ -307,7 +430,7 @@ export default function GestaoSalarios() {
           flexDirection: { xs: "column", md: "row" },
         }}
       >
-        {/* SIDEBAR PREMIUM */}
+        {/* SIDEBAR (INALTERADA) */}
         <Box
           sx={{
             width: { xs: "100%", md: 320 },
@@ -320,11 +443,7 @@ export default function GestaoSalarios() {
             height: "fit-content",
           }}
         >
-          <Typography
-            variant="subtitle1"
-            fontWeight={900}
-            sx={{ mb: 2, color: "#020617", letterSpacing: "0.7px" }}
-          >
+          <Typography variant="subtitle1" fontWeight={900} sx={{ mb: 2 }}>
             MÓDULOS SALARIAIS
           </Typography>
 
@@ -365,7 +484,7 @@ export default function GestaoSalarios() {
           </Stack>
         </Box>
 
-        {/* CONTEÚDO PRINCIPAL */}
+        {/* CONTEÚDO */}
         <Box sx={{ flex: 1 }}>
           <Box
             sx={{
@@ -377,22 +496,11 @@ export default function GestaoSalarios() {
               boxShadow: "0 20px 50px rgba(2,6,23,0.05)",
             }}
           >
-            <Typography
-              variant="h5"
-              fontWeight={900}
-              sx={{ color: "#020617", mb: 1 }}
-            >
+            <Typography variant="h5" fontWeight={900}>
               {modulos[formAtivo].titulo}
             </Typography>
 
-            <Typography
-              sx={{
-                color: "#64748b",
-                fontSize: "0.97rem",
-                lineHeight: 1.8,
-                fontWeight: 500,
-              }}
-            >
+            <Typography sx={{ color: "#64748b", mt: 1 }}>
               {modulos[formAtivo].descricao}
             </Typography>
           </Box>

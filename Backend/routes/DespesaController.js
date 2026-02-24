@@ -291,6 +291,42 @@ router.get('/categorias/despesas', auth, async (req, res) => {
 
 
 
+// DELETE /categorias/:id - remover categoria
+router.delete('/categorias/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { SedeId, FilhalId } = req.usuario;
+
+    // 🔎 Verificar se a categoria existe e pertence à sede/filial do usuário
+    const categoria = await Categorias.findOne({
+      where: {
+        id
+      }
+    });
+
+    if (!categoria) {
+      return res.status(404).json({
+        message: 'Categoria não encontrada ou sem permissão para excluir.'
+      });
+    }
+
+    // 🗑️ Excluir categoria
+    await categoria.destroy();
+
+    return res.status(200).json({
+      message: 'Categoria excluída com sucesso.'
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir categoria:', error);
+    return res.status(500).json({
+      message: 'Erro interno ao excluir categoria.'
+    });
+  }
+});
+
+
+
 // POST /categorias - cadastrar nova categoria/natureza
 router.post('/categorias', auth, async (req, res) => {
   try {

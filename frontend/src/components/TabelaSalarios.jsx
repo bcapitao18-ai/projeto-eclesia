@@ -20,204 +20,160 @@ import {
   InputLabel,
   Chip,
   Grid,
+  useTheme,
+  useMediaQuery,
+  Stack,
   Divider,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import api from "../api/axiosConfig";
 import dayjs from "dayjs";
+import "dayjs/locale/pt-br"; // 🔥 PORTUGUÊS
+import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-} from "recharts";
+
+// Ativar idioma português globalmente
+dayjs.locale("pt-br");
+
+// Função para deixar o mês com primeira letra maiúscula (Fevereiro)
+const formatarMes = (mes) => {
+  const nomeMes = dayjs(mes).format("MMMM"); // fevereiro
+  return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1); // Fevereiro
+};
 
 export default function TabelaSalarios() {
-  const [salarios, setSalarios] = useState([]);
+  const [relatorio, setRelatorio] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [mensagem, setMensagem] = useState("");
   const [startDate, setStartDate] = useState(dayjs().format("YYYY-MM"));
   const [endDate, setEndDate] = useState("");
   const [funcionarios, setFuncionarios] = useState([]);
   const [selectedFuncionario, setSelectedFuncionario] = useState("");
 
-  const fetchSalarios = async (start, end, funcionarioId) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const fetchFuncionarios = async () => {
+    const token = localStorage.getItem("token");
+    const res = await api.get("/funcionarios", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setFuncionarios(res.data);
+  };
+
+  const fetchRelatorio = async (start, end, funcionarioId) => {
     setLoading(true);
-    setMensagem("");
     try {
       const token = localStorage.getItem("token");
+
       const params = {};
-      if (start) params.startDate = dayjs(start).format("YYYY-MM");
-      if (end) params.endDate = dayjs(end).format("YYYY-MM");
+      if (start) params.startDate = start;
+      if (end) params.endDate = end;
       if (funcionarioId) params.FuncionarioId = funcionarioId;
 
-      const response = await api.get("/salarios", {
+      const res = await api.get("/salarios", {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
 
-      const salariosConvertidos = (response.data.salarios || []).map((s) => ({
-        ...s,
-        salario_base: Number(s.salario_base),
-        total_subsidios: Number(s.total_subsidios),
-        salario_liquido: Number(s.salario_liquido),
-      }));
-
-      setSalarios(salariosConvertidos);
-    } catch (error) {
-      console.error(error);
-      setMensagem("Erro ao carregar salários.");
+      setRelatorio(res.data.relatorio || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchFuncionarios = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await api.get("/funcionarios", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setFuncionarios(response.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   useEffect(() => {
-    fetchSalarios();
+    fetchRelatorio();
     fetchFuncionarios();
   }, []);
 
   const handleFiltrar = () => {
     const finalDate = endDate || startDate;
-    fetchSalarios(startDate, finalDate, selectedFuncionario);
+    fetchRelatorio(startDate, finalDate, selectedFuncionario);
   };
 
   const handleReset = () => {
     setStartDate(dayjs().format("YYYY-MM"));
     setEndDate("");
     setSelectedFuncionario("");
-    fetchSalarios();
+    fetchRelatorio();
   };
 
-  // KPIs (LÓGICA ORIGINAL MANTIDA)
-  const totalPago = useMemo(
-    () => salarios.reduce((acc, s) => acc + s.salario_liquido, 0),
-    [salarios]
-  );
+  // Meses dinâmicos (colunas)
+  const meses = useMemo(() => {
+    const setMeses = new Set();
+    relatorio.forEach((f) => {
+      Object.keys(f.meses || {}).forEach((m) => setMeses.add(m));
+    });
+    return Array.from(setMeses).sort();
+  }, [relatorio]);
 
-  const totalSubsidios = useMemo(
-    () => salarios.reduce((acc, s) => acc + s.total_subsidios, 0),
-    [salarios]
-  );
+  // KPI Total Geral
+  const totalGeralEmpresa = useMemo(() => {
+    return relatorio.reduce((acc, f) => acc + f.totalGeral, 0);
+  }, [relatorio]);
 
-  const mediaSalarial = useMemo(
-    () => (salarios.length ? totalPago / salarios.length : 0),
-    [totalPago, salarios]
-  );
+  const exportarExcel = () => {
+    const dados = relatorio.map((f) => {
+      const linha = { Funcionario: f.nome };
 
-  // DADOS DO GRÁFICO DE PIZZA (SURREAL E INTELIGENTE)
-  const pieData = useMemo(() => {
-    const agrupado = salarios.reduce((acc, s) => {
-      const nome = s.Funcionario?.Membro?.nome || "Sem Nome";
-      if (!acc[nome]) acc[nome] = 0;
-      acc[nome] += s.salario_liquido;
-      return acc;
-    }, {});
+      meses.forEach((mes) => {
+        linha[formatarMes(mes)] = f.meses[mes]?.liquido || 0; // 🔥 MES EM PORTUGUÊS NO EXCEL
+      });
 
-    return Object.keys(agrupado).map((nome) => ({
-      name: nome,
-      value: agrupado[nome],
-    }));
-  }, [salarios]);
+      linha["Total Geral"] = f.totalGeral;
+      return linha;
+    });
 
-  const COLORS = [
-    "#6366f1",
-    "#22c55e",
-    "#06b6d4",
-    "#f59e0b",
-    "#ef4444",
-    "#8b5cf6",
-    "#14b8a6",
-  ];
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+    XLSX.writeFile(wb, "relatorio_executivo_salarios.xlsx");
+  };
 
-  // EXPORTAR PDF (LÓGICA RESTAURADA)
   const exportarPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text("Relatório Executivo de Salários", 14, 20);
+    doc.text("Relatório Executivo de Salários", 14, 18);
 
-    const tableData = salarios.map((s) => [
-      s.Funcionario?.Membro?.nome || "—",
-      s.mes_ano,
-      `Kz ${s.salario_base.toFixed(2)}`,
-      `Kz ${s.total_subsidios.toFixed(2)}`,
-      `Kz ${(s.salario_base + s.total_subsidios - s.salario_liquido).toFixed(2)}`,
-      `Kz ${s.salario_liquido.toFixed(2)}`,
+    const head = [["Funcionário", ...meses.map(formatarMes), "Total Geral"]];
+
+    const body = relatorio.map((f) => [
+      f.nome,
+      ...meses.map((mes) =>
+        `Kz ${(f.meses[mes]?.liquido || 0).toFixed(2)}`
+      ),
+      `Kz ${f.totalGeral.toFixed(2)}`,
     ]);
 
     autoTable(doc, {
+      head,
+      body,
       startY: 30,
-      head: [
-        [
-          "Funcionário",
-          "Mês/Ano",
-          "Salário Base",
-          "Subsídios",
-          "Descontos",
-          "Salário Líquido",
-        ],
-      ],
-      body: tableData,
     });
 
-    doc.save("relatorio_salarios.pdf");
+    doc.save("relatorio_executivo_salarios.pdf");
   };
 
-  // EXPORTAR EXCEL (LÓGICA RESTAURADA)
-  const exportarExcel = () => {
-    const dados = salarios.map((s) => ({
-      Funcionario: s.Funcionario?.Membro?.nome || "—",
-      Mes: s.mes_ano,
-      Salario_Base: s.salario_base,
-      Subsidios: s.total_subsidios,
-      Descontos:
-        s.salario_base + s.total_subsidios - s.salario_liquido,
-      Salario_Liquido: s.salario_liquido,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dados);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Salarios");
-    XLSX.writeFile(workbook, "relatorio_salarios.xlsx");
+  const cardPremium = {
+    borderRadius: 5,
+    backgroundColor: "#ffffff",
+    border: "1px solid #e6eefc",
+    boxShadow: "0 20px 60px rgba(0, 82, 255, 0.08)",
   };
 
-  const premiumCard = {
-    borderRadius: 6,
-    background: "#ffffff",
-    boxShadow: "0 25px 80px rgba(0,0,0,0.05)",
-    border: "1px solid #f1f5f9",
-    backdropFilter: "blur(10px)",
-  };
-
-  const premiumButton = {
-    borderRadius: "16px",
-    px: 3.5,
-    py: 1.4,
+  const buttonPrimary = {
+    borderRadius: "14px",
     fontWeight: 800,
+    px: 3,
+    py: 1.2,
     textTransform: "none",
-    background: "linear-gradient(135deg,#4f46e5,#6366f1)",
-    color: "#fff",
-    boxShadow: "0 10px 30px rgba(79,70,229,0.25)",
+    backgroundColor: "#0052ff",
+    color: "#ffffff",
     "&:hover": {
-      transform: "translateY(-3px)",
-      boxShadow: "0 15px 40px rgba(79,70,229,0.35)",
+      backgroundColor: "#003ec2",
     },
   };
 
@@ -225,263 +181,179 @@ export default function TabelaSalarios() {
     <Box
       sx={{
         minHeight: "100vh",
-        py: 6,
+        backgroundColor: "#ffffff",
         px: { xs: 2, md: 6 },
-        background:
-          "radial-gradient(circle at top, #ffffff 0%, #f8fafc 50%, #ffffff 100%)",
+        py: { xs: 3, md: 5 },
       }}
     >
-      {/* HEADER SURREAL BRANCO */}
-      <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}>
+      {/* HEADER SURREAL */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Typography
-          variant="h3"
+          variant={isMobile ? "h4" : "h3"}
           fontWeight={900}
-          textAlign="center"
-          sx={{ color: "#0f172a", mb: 1, letterSpacing: 1 }}
+          sx={{
+            color: "#0a1f44",
+            mb: 1,
+            textAlign: "center",
+          }}
         >
           Painel Executivo de Salários
         </Typography>
+
         <Typography
-          textAlign="center"
-          sx={{ mb: 5, color: "#64748b", fontWeight: 500 }}
+          sx={{
+            textAlign: "center",
+            color: "#3b5bdb",
+            fontWeight: 600,
+            mb: 4,
+          }}
         >
-          Relatórios Financeiros • Análise Premium • Gestão Inteligente
+          Relatório Analítico • Gestão Premium • Visual Corporativo
         </Typography>
       </motion.div>
 
-      {/* KPIs SURREAIS */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {[
-          { title: "Total Pago", value: totalPago },
-          { title: "Total Subsídios", value: totalSubsidios },
-          { title: "Média Salarial", value: mediaSalarial },
-          { title: "Registos", value: salarios.length },
-        ].map((kpi, index) => (
-          <Grid item xs={12} md={3} key={index}>
-            <motion.div whileHover={{ y: -6 }}>
-              <Card sx={premiumCard}>
-                <CardContent>
-                  <Typography color="#64748b" fontWeight={700}>
-                    {kpi.title}
-                  </Typography>
-                  <Typography
-                    variant="h4"
-                    fontWeight={900}
-                    sx={{ mt: 1, color: "#020617" }}
-                  >
-                    {typeof kpi.value === "number"
-                      ? `Kz ${kpi.value.toFixed(2)}`
-                      : kpi.value}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* FILTROS + EXPORT PREMIUM */}
-      <Card sx={{ ...premiumCard, mb: 4 }}>
-        <CardContent
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <TextField
-            label="Mês Inicial"
-            type="month"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <TextField
-            label="Mês Final"
-            type="month"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel>Funcionário</InputLabel>
-            <Select
-              value={selectedFuncionario}
-              label="Funcionário"
-              onChange={(e) => setSelectedFuncionario(e.target.value)}
-            >
-              <MenuItem value="">
-                <em>Todos</em>
-              </MenuItem>
-              {funcionarios.map((f) => (
-                <MenuItem key={f.id} value={f.id}>
-                  {f.Membro.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button onClick={handleFiltrar} sx={premiumButton}>
-            Filtrar Relatório
-          </Button>
-
-          <Button
-            onClick={exportarPDF}
-            sx={{
-              ...premiumButton,
-              background: "linear-gradient(135deg,#0ea5e9,#38bdf8)",
-            }}
-          >
-            Exportar PDF
-          </Button>
-
-          <Button
-            onClick={exportarExcel}
-            sx={{
-              ...premiumButton,
-              background: "linear-gradient(135deg,#10b981,#34d399)",
-            }}
-          >
-            Exportar Excel
-          </Button>
-
-          <Button
-            onClick={handleReset}
-            sx={{
-              ...premiumButton,
-              background: "linear-gradient(135deg,#64748b,#94a3b8)",
-            }}
-          >
-            Resetar
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* GRÁFICO DE PIZZA SURREAL */}
-      <Card sx={{ ...premiumCard, mb: 4 }}>
+      {/* FILTROS */}
+      <Card sx={{ ...cardPremium, mb: 4 }}>
         <CardContent>
-          <Typography
-            variant="h5"
-            fontWeight={900}
-            sx={{ mb: 3, color: "#0f172a" }}
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={2}
+            alignItems="center"
+            justifyContent="center"
+            flexWrap="wrap"
           >
-            Distribuição de Salários por Funcionário
-          </Typography>
+            <TextField
+              type="month"
+              label="Mês Inicial"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              fullWidth={isMobile}
+            />
 
-          <Box sx={{ width: "100%", height: 380 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={130}
-                  innerRadius={60}
-                  paddingAngle={4}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => `Kz ${v.toFixed(2)}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Box>
+            <TextField
+              type="month"
+              label="Mês Final"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              fullWidth={isMobile}
+            />
+
+            <FormControl sx={{ minWidth: 220, width: isMobile ? "100%" : "auto" }}>
+              <InputLabel>Funcionário</InputLabel>
+              <Select
+                value={selectedFuncionario}
+                label="Funcionário"
+                onChange={(e) => setSelectedFuncionario(e.target.value)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {funcionarios.map((f) => (
+                  <MenuItem key={f.id} value={f.id}>
+                    {f.Membro.nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Button sx={buttonPrimary} onClick={handleFiltrar}>
+              Filtrar
+            </Button>
+
+            <Button sx={buttonPrimary} onClick={exportarExcel}>
+              Excel
+            </Button>
+
+            <Button sx={buttonPrimary} onClick={exportarPDF}>
+              PDF
+            </Button>
+
+            <Button
+              onClick={handleReset}
+              sx={{
+                ...buttonPrimary,
+                backgroundColor: "#e6eefc",
+                color: "#003ec2",
+              }}
+            >
+              Resetar
+            </Button>
+          </Stack>
         </CardContent>
       </Card>
 
-      {/* TABELA ULTRA PREMIUM */}
-      <Card sx={premiumCard}>
+      {/* TABELA */}
+      <Card sx={cardPremium}>
         <CardContent>
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-              <CircularProgress size={60} />
+              <CircularProgress sx={{ color: "#0052ff" }} />
             </Box>
           ) : (
-            <TableContainer component={Paper} elevation={0}>
-              <Table stickyHeader>
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{
+                borderRadius: 4,
+                border: "1px solid #e6eefc",
+                overflowX: "auto",
+              }}
+            >
+              <Table stickyHeader sx={{ minWidth: meses.length * 140 + 300 }}>
                 <TableHead>
-                  <TableRow sx={{ background: "#f1f5f9" }}>
-                    {[
-                      "Funcionário",
-                      "Mês/Ano",
-                      "Salário Base",
-                      "Subsídios",
-                      "Descontos",
-                      "Salário Líquido",
-                    ].map((head) => (
+                  <TableRow sx={{ backgroundColor: "#f5f8ff" }}>
+                    <TableCell sx={{ fontWeight: 900, color: "#0a1f44" }}>
+                      Funcionário
+                    </TableCell>
+
+                    {meses.map((mes) => (
                       <TableCell
-                        key={head}
-                        sx={{
-                          fontWeight: 900,
-                          color: "#020617",
-                          fontSize: "0.95rem",
-                        }}
-                        align={head === "Funcionário" ? "left" : "right"}
+                        key={mes}
+                        align="right"
+                        sx={{ fontWeight: 900, color: "#0a1f44" }}
                       >
-                        {head}
+                        {formatarMes(mes)} {/* 🔥 AGORA: Fevereiro */}
                       </TableCell>
                     ))}
+
+                    <TableCell align="right" sx={{ fontWeight: 900, color: "#003ec2" }}>
+                      Total Geral
+                    </TableCell>
                   </TableRow>
                 </TableHead>
 
                 <TableBody>
-                  {salarios.length > 0 ? (
-                    salarios.map((s) => (
-                      <TableRow
-                        key={s.id}
-                        sx={{
-                          transition: "0.25s",
-                          "&:hover": {
-                            background: "#f8fafc",
-                          },
-                        }}
-                      >
-                        <TableCell sx={{ fontWeight: 700 }}>
-                          {s.Funcionario?.Membro?.nome || "—"}
-                        </TableCell>
-                        <TableCell>{s.mes_ano}</TableCell>
-                        <TableCell align="right">
-                          Kz {s.salario_base.toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right">
-                          Kz {s.total_subsidios.toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right">
-                          Kz{" "}
-                          {(
-                            s.salario_base +
-                            s.total_subsidios -
-                            s.salario_liquido
-                          ).toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right">
+                  {relatorio.map((f) => (
+                    <TableRow key={f.FuncionarioId}>
+                      <TableCell sx={{ fontWeight: 800, color: "#0a1f44" }}>
+                        {f.nome}
+                      </TableCell>
+
+                      {meses.map((mes) => (
+                        <TableCell key={mes} align="right">
                           <Chip
-                            label={`Kz ${s.salario_liquido.toFixed(2)}`}
+                            label={`Kz ${(f.meses[mes]?.liquido || 0).toFixed(2)}`}
                             sx={{
-                              fontWeight: 900,
-                              fontSize: "0.9rem",
+                              fontWeight: 800,
                               borderRadius: "12px",
-                              background:
-                                "linear-gradient(135deg,#10b981,#34d399)",
-                              color: "#022c22",
+                              backgroundColor: "#e6efff",
+                              color: "#003ec2",
                             }}
                           />
                         </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        Nenhum salário encontrado.
+                      ))}
+
+                      <TableCell align="right">
+                        <Chip
+                          label={`Kz ${f.totalGeral.toFixed(2)}`}
+                          sx={{
+                            fontWeight: 900,
+                            borderRadius: "14px",
+                            backgroundColor: "#0052ff",
+                            color: "#ffffff",
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>

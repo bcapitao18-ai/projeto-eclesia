@@ -1210,16 +1210,15 @@ router.get('/cargos', auth, async (req, res) => {
 
 
 
-
-// GET /salarios - listar salários por intervalo e opcionalmente por funcionário
+// GET /salarios - relatório agrupado por funcionário e meses (EXECUTIVO)
 router.get("/salarios", auth, async (req, res) => {
   try {
-    const { startDate, endDate, FuncionarioId } = req.query; // adicionado FuncionarioId
+    const { startDate, endDate, FuncionarioId } = req.query;
     const { SedeId, FilhalId } = req.usuario;
 
     let where = {};
 
-    // Filtrar por intervalo de datas (mes_ano é "YYYY-MM")
+    // Filtro por intervalo (mes_ano = YYYY-MM)
     if (startDate && endDate) {
       where.mes_ano = {
         [Op.between]: [
@@ -1236,7 +1235,7 @@ router.get("/salarios", auth, async (req, res) => {
       where.FilhalId = FilhalId;
     }
 
-    // Filtro por funcionário, se fornecido
+    // Filtro por funcionário
     if (FuncionarioId) {
       where.FuncionarioId = FuncionarioId;
     }
@@ -1247,24 +1246,60 @@ router.get("/salarios", auth, async (req, res) => {
         {
           model: Funcionarios,
           include: [
-            { model: Membros, attributes: ["id", "nome"] }, // incluir id para referência
+            {
+              model: Membros,
+              attributes: ["id", "nome"],
+            },
           ],
         },
       ],
-      order: [["mes_ano", "DESC"]],
+      order: [
+        ["FuncionarioId", "ASC"],
+        ["mes_ano", "ASC"],
+      ],
     });
 
-    res.json({ salarios });
+    // 🔥 AGRUPAMENTO INTELIGENTE (1 FUNCIONÁRIO = 1 LINHA)
+    const agrupado = {};
+
+    salarios.forEach((s) => {
+      const funcionarioId = s.FuncionarioId;
+      const nome = s.Funcionario?.Membro?.nome || "Sem Nome";
+      const mes = s.mes_ano;
+
+      if (!agrupado[funcionarioId]) {
+        agrupado[funcionarioId] = {
+          FuncionarioId: funcionarioId,
+          nome,
+          meses: {},
+          totalGeral: 0,
+        };
+      }
+
+      const salarioLiquido = Number(s.salario_liquido || 0);
+
+      agrupado[funcionarioId].meses[mes] = {
+        salario_base: Number(s.salario_base || 0),
+        subsidios: Number(s.total_subsidios || 0),
+        liquido: salarioLiquido,
+      };
+
+      agrupado[funcionarioId].totalGeral += salarioLiquido;
+    });
+
+    // Converter para array
+    const resultado = Object.values(agrupado);
+
+    res.json({
+      relatorio: resultado,
+    });
   } catch (error) {
-    console.error("Erro ao buscar salários:", error);
-    res.status(500).json({ error: "Erro interno ao buscar salários." });
+    console.error("Erro ao gerar relatório executivo:", error);
+    res.status(500).json({
+      error: "Erro interno ao gerar relatório de salários.",
+    });
   }
 });
-
-
-
-
-
 
 
 
@@ -1439,6 +1474,121 @@ router.post("/salarios", auth, async (req, res) => {
     res.status(500).json({ message: "❌ Erro interno ao gerar salário." });
   }
 });
+
+
+router.get("/salarios/:id/detalhado", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const salario = await Salarios.findByPk(id, {
+      include: [
+        {
+          model: Funcionarios,
+          include: [{ model: Membros, as: "Membro" }]
+        }
+      ]
+    });
+
+    if (!salario) {
+      return res.status(404).json({ message: "Salário não encontrado." });
+    }
+
+    // 🔥 Buscar todos subsídios e descontos disponíveis
+    const subsidios = await Subsidios.findAll({
+      where: { ativo: 1 }
+    });
+
+    const descontos = await Descontos.findAll({
+      where: { ativo: 1 }
+    });
+
+    return res.json({
+      salario,
+      subsidiosDisponiveis: subsidios,
+      descontosDisponiveis: descontos
+    });
+
+  } catch (error) {
+    console.error("Erro ao buscar salário detalhado:", error);
+    res.status(500).json({
+      message: "Erro interno ao buscar dados do salário."
+    });
+  }
+});
+
+router.put("/salarios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      FuncionarioId,
+      mes_ano,
+      subsidiosAplicados = [],
+      descontosAplicados = []
+    } = req.body;
+
+    const salario = await Salarios.findByPk(id);
+
+    if (!salario) {
+      return res.status(404).json({ message: "Salário não encontrado." });
+    }
+
+    const funcionario = await Funcionarios.findByPk(FuncionarioId);
+
+    if (!funcionario) {
+      return res.status(404).json({ message: "Funcionário não encontrado." });
+    }
+
+    const salario_base = parseFloat(funcionario.salario_base);
+
+    const total_subsidios = subsidiosAplicados.reduce(
+      (acc, s) => acc + parseFloat(s.valor || 0),
+      0
+    );
+
+    const total_descontos = descontosAplicados.reduce(
+      (acc, d) => acc + parseFloat(d.valor || 0),
+      0
+    );
+
+    const salario_liquido = salario_base + total_subsidios - total_descontos;
+
+    await salario.update({
+      FuncionarioId,
+      mes_ano,
+      salario_base,
+      total_subsidios,
+      salario_liquido
+    });
+
+    res.json({ message: "✅ Salário atualizado com sucesso!", salario });
+
+  } catch (error) {
+    console.error("Erro ao atualizar salário:", error);
+    res.status(500).json({ message: "Erro interno ao atualizar salário." });
+  }
+});
+
+router.delete("/salarios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const salario = await Salarios.findByPk(id);
+
+    if (!salario) {
+      return res.status(404).json({ message: "Salário não encontrado." });
+    }
+
+    await salario.destroy();
+
+    res.json({ message: "🗑 Salário eliminado com sucesso!" });
+
+  } catch (error) {
+    console.error("Erro ao eliminar salário:", error);
+    res.status(500).json({ message: "Erro interno ao eliminar salário." });
+  }
+});
+
+
 
 
 
@@ -2642,7 +2792,6 @@ router.post('/contribuicoes', auth, async (req, res) => {
 
 const { Op } = require('sequelize');
 
-
 // Rota - Listar contribuições filtradas (COMPATÍVEL COM FRONTEND)
 router.get('/lista/contribuicoes', auth, async (req, res) => {
   const { startDate, endDate, tipoId, membroId } = req.query;
@@ -2663,33 +2812,33 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     }
 
     // -----------------------------
-    // 🎯 FILTRO POR TIPO (CORRETO)
+    // 🎯 FILTRO POR TIPO
     // -----------------------------
     if (tipoId && tipoId !== '') {
       where.TipoContribuicaoId = Number(tipoId);
     }
 
     // -----------------------------
-    // 👤 🔥 FILTRO POR MEMBRO (CORRIGIDO)
+    // 👤 FILTRO POR MEMBRO
     // -----------------------------
     if (membroId && membroId !== '' && membroId !== 'undefined' && membroId !== 'null') {
-      where.MembroId = Number(membroId); // CAST PARA INT (ESSENCIAL)
+      where.MembroId = Number(membroId);
     }
 
     // -----------------------------
-    // 🔐 FILTRO HIERÁRQUICO (SEDE / FILIAL)
+    // 🔐 FILTRO HIERÁRQUICO
     // -----------------------------
     const { SedeId, FilialId, FilhalId } = req.usuario;
     const filial = FilialId || FilhalId;
 
     if (filial) {
-      where.FilhalId = filial; // conforme teu banco
+      where.FilhalId = filial;
     } else if (SedeId) {
       where.SedeId = SedeId;
     }
 
     // -----------------------------
-    // 📥 BUSCAR CONTRIBUIÇÕES (SEM INCLUDE = SEM DUPLICAÇÃO)
+    // 📥 BUSCAR CONTRIBUIÇÕES
     // -----------------------------
     const contribuicoesDB = await Contribuicao.findAll({
       where,
@@ -2698,7 +2847,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
 
     if (!contribuicoesDB || contribuicoesDB.length === 0) {
-      return res.status(200).json([]); // ⚠️ FRONTEND ESPERA ARRAY
+      return res.status(200).json([]);
     }
 
     // -----------------------------
@@ -2721,12 +2870,12 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     ];
 
     // -----------------------------
-    // 👥 BUSCA MANUAL DOS MEMBROS
+    // 👥 BUSCA MANUAL DOS MEMBROS (AGORA COM FOTO)
     // -----------------------------
     const membros = membrosIds.length > 0
       ? await Membros.findAll({
           where: { id: membrosIds },
-          attributes: ['id', 'nome'],
+          attributes: ['id', 'nome', 'foto'], // 🔥 ADICIONADO FOTO
           raw: true
         })
       : [];
@@ -2743,11 +2892,16 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
       : [];
 
     // -----------------------------
-    // 🧠 MAPAS RÁPIDOS
+    // 🧠 MAPAS RÁPIDOS (AGORA COM FOTO)
     // -----------------------------
     const membrosMap = {};
     membros.forEach(m => {
-      membrosMap[m.id] = m.nome;
+      membrosMap[m.id] = {
+        nome: m.nome,
+        foto: m.foto
+          ? `${req.protocol}://${req.get('host')}${m.foto}`
+          : null
+      };
     });
 
     const tiposMap = {};
@@ -2756,7 +2910,7 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
 
     // -----------------------------
-    // 🔥 RESULTADO FINAL (MESMO FORMATO DO INCLUDE)
+    // 🔥 RESULTADO FINAL
     // -----------------------------
     const contribuicoes = contribuicoesDB.map(c => {
       return {
@@ -2769,8 +2923,11 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
         Membro: {
           id: c.MembroId,
           nome: c.MembroId
-            ? (membrosMap[c.MembroId] || 'Sem Membro')
-            : 'Sem Membro'
+            ? (membrosMap[c.MembroId]?.nome || 'Sem Membro')
+            : 'Sem Membro',
+          foto: c.MembroId
+            ? (membrosMap[c.MembroId]?.foto || null)
+            : null
         }
       };
     });
@@ -2785,7 +2942,6 @@ router.get('/lista/contribuicoes', auth, async (req, res) => {
     });
   }
 });
-
 
 
 const {literal } = require('sequelize');

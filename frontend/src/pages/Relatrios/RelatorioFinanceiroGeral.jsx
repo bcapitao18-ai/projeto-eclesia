@@ -11,21 +11,10 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Divider,
   Grid,
   TextField,
-  Chip,
-  Stack,
 } from '@mui/material';
-import {
-  FilterAlt,
-  PictureAsPdf,
-  TrendingUp,
-  TrendingDown,
-  AccountBalanceWallet,
-  AutoGraph,
-} from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { FilterAlt, PictureAsPdf } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,9 +29,6 @@ import {
   Legend,
 } from 'recharts';
 import api from '../../api/axiosConfig';
-
-const MotionCard = motion(Card);
-const MotionBox = motion(Box);
 
 export default function RelatorioFinanceiroGeral() {
   const [periodo, setPeriodo] = useState('mes');
@@ -59,6 +45,14 @@ export default function RelatorioFinanceiroGeral() {
   const [dataFinal, setDataFinal] = useState(
     dayjs().format('YYYY-MM-DD')
   );
+
+  const formatKz = (valor) => {
+    const numero = Number(valor || 0);
+    return numero.toLocaleString('pt-PT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   const calcularPeriodo = (p) => {
     const agora = dayjs();
@@ -98,7 +92,7 @@ export default function RelatorioFinanceiroGeral() {
         saldo: res.data.saldo || 0,
       });
     } catch (err) {
-      console.error('Erro ao buscar relatório financeiro', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -108,22 +102,22 @@ export default function RelatorioFinanceiroGeral() {
     const doc = new jsPDF();
     const { start, end } = calcularPeriodo(periodo);
 
-    doc.setFontSize(18);
-    doc.text('Relatório Financeiro Surreal Premium', 14, 20);
+    doc.setFontSize(16);
+    doc.text('Relatório Financeiro Geral', 14, 20);
     doc.setFontSize(12);
     doc.text(`Período: ${start} até ${end}`, 14, 30);
 
     autoTable(doc, {
       head: [['Descrição', 'Valor (Kz)']],
       body: [
-        ['Total Arrecadado', dados.totalArrecadado.toFixed(2)],
-        ['Total Gasto', dados.totalGasto.toFixed(2)],
-        ['Saldo', dados.saldo.toFixed(2)],
+        ['Total Arrecadado', formatKz(dados.totalArrecadado)],
+        ['Total Gasto', formatKz(dados.totalGasto)],
+        ['Saldo', formatKz(dados.saldo)],
       ],
       startY: 40,
     });
 
-    doc.save('relatorio-financeiro-surreal.pdf');
+    doc.save('relatorio-financeiro.pdf');
   };
 
   const dadosGrafico = [
@@ -135,87 +129,60 @@ export default function RelatorioFinanceiroGeral() {
     },
   ];
 
+  const cardStyle = (color, glow) => ({
+    height: '100%',
+    borderRadius: 4,
+    background: 'rgba(255,255,255,0.7)',
+    backdropFilter: 'blur(20px)',
+    border: `1px solid ${color}20`,
+    boxShadow: `0 8px 30px ${glow}`,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: `0 12px 40px ${glow}`,
+    },
+  });
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
+        p: { xs: 2, md: 4 },
         background: `
-          radial-gradient(circle at 20% 20%, rgba(0,102,255,0.08), transparent 40%),
-          radial-gradient(circle at 80% 80%, rgba(139,92,246,0.08), transparent 40%),
-          radial-gradient(circle at 50% 0%, rgba(0,0,0,0.04), transparent 50%),
-          #ffffff
+          radial-gradient(circle at 20% 20%, rgba(37,99,235,0.07), transparent 40%),
+          radial-gradient(circle at 80% 80%, rgba(22,163,74,0.06), transparent 40%),
+          #f4f6f9
         `,
-        px: { xs: 2, sm: 3, md: 6 },
-        py: { xs: 3, md: 6 },
       }}
     >
-      {/* HEADER HOLOGRÁFICO */}
-      <MotionBox
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9 }}
-        textAlign="center"
-        mb={6}
+      <Typography
+        variant="h4"
+        fontWeight={800}
+        mb={3}
+        sx={{ letterSpacing: 1 }}
       >
-        <Stack spacing={2} alignItems="center">
-          <Typography
-            sx={{
-              fontSize: { xs: 30, sm: 42, md: 64 },
-              fontWeight: 900,
-              letterSpacing: 2,
-              background:
-                'linear-gradient(90deg,#000,#2563eb,#7c3aed,#000)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            RELATÓRIO FINANCEIRO GERAL
-          </Typography>
+        Relatório Financeiro
+      </Typography>
 
-          <Chip
-            icon={<AutoGraph />}
-            label="Dashboard Financeiro Ultra Premium"
-            sx={{
-              fontWeight: 800,
-              px: 2,
-              py: 2,
-              borderRadius: 50,
-              backdropFilter: 'blur(10px)',
-              background: 'rgba(255,255,255,0.8)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.08)',
-            }}
-          />
-        </Stack>
-      </MotionBox>
-
-      {/* CARD PRINCIPAL GLASS */}
-      <MotionCard
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.7 }}
+      {/* FILTROS */}
+      <Card
         sx={{
-          borderRadius: { xs: 4, md: 6 },
-          background: 'rgba(255,255,255,0.75)',
-          backdropFilter: 'blur(30px)',
-          border: '1px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 60px 160px rgba(0,0,0,0.12)',
+          mb: 4,
+          borderRadius: 4,
+          background: 'rgba(255,255,255,0.8)',
+          backdropFilter: 'blur(15px)',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.05)',
         }}
       >
-        <CardContent sx={{ p: { xs: 3, md: 5 } }}>
-          {/* FILTROS SURREAIS RESPONSIVOS */}
-          <Grid container spacing={2} mb={5}>
+        <CardContent>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Período</InputLabel>
                 <Select
                   value={periodo}
                   label="Período"
                   onChange={(e) => setPeriodo(e.target.value)}
-                  sx={{
-                    borderRadius: 3,
-                    background: '#ffffff',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-                  }}
                 >
                   <MenuItem value="hoje">Hoje</MenuItem>
                   <MenuItem value="semana">Semana</MenuItem>
@@ -223,7 +190,7 @@ export default function RelatorioFinanceiroGeral() {
                   <MenuItem value="trimestre">Trimestre</MenuItem>
                   <MenuItem value="semestre">Semestre</MenuItem>
                   <MenuItem value="ano">Ano</MenuItem>
-                  <MenuItem value="personalizado">Personalizado</MenuItem>
+                  <MenuItem value="personalizado">Personalizado - Escolha voce mesmo</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -233,6 +200,7 @@ export default function RelatorioFinanceiroGeral() {
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     fullWidth
+                    size="small"
                     label="Data Inicial"
                     type="date"
                     value={dataInicial}
@@ -240,9 +208,11 @@ export default function RelatorioFinanceiroGeral() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     fullWidth
+                    size="small"
                     label="Data Final"
                     type="date"
                     value={dataFinal}
@@ -253,153 +223,102 @@ export default function RelatorioFinanceiroGeral() {
               </>
             )}
 
-            <Grid item xs={12} sm={6} md={3}>
-              <Button
-                fullWidth
-                startIcon={<FilterAlt />}
-                onClick={buscarRelatorio}
-                sx={{
-                  height: 56,
-                  borderRadius: 4,
-                  fontWeight: 900,
-                  background:
-                    'linear-gradient(135deg,#000,#1e3a8a)',
-                  color: '#fff',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-                  transition: '0.4s',
-                  '&:hover': {
-                    transform: 'translateY(-3px) scale(1.02)',
-                  },
-                }}
-              >
-                GERAR RELATÓRIO
+            <Grid item xs={12} sm={6} md={2}>
+              <Button fullWidth variant="contained" onClick={buscarRelatorio}>
+                Gerar
               </Button>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
-              <Button
-                fullWidth
-                startIcon={<PictureAsPdf />}
-                onClick={exportarPDF}
-                sx={{
-                  height: 56,
-                  borderRadius: 4,
-                  fontWeight: 900,
-                  border: '2px solid #000',
-                  color: '#000',
-                  '&:hover': {
-                    background: '#000',
-                    color: '#fff',
-                  },
-                }}
-              >
-                EXPORTAR PDF
+            <Grid item xs={12} sm={6} md={2}>
+              <Button fullWidth variant="outlined" onClick={exportarPDF}>
+                PDF
               </Button>
             </Grid>
           </Grid>
-
-          <Divider sx={{ mb: 5 }} />
-
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-              <CircularProgress size={80} />
-            </Box>
-          ) : (
-            <>
-              {/* CARDS SURREAIS COM GLOW */}
-              <Grid container spacing={3}>
-                {[
-                  {
-                    title: 'Contribuição Total',
-                    value: dados.totalArrecadado,
-                    icon: <TrendingUp sx={{ fontSize: 40 }} />,
-                    gradient: 'linear-gradient(135deg,#ecfdf5,#ffffff)',
-                  },
-                  {
-                    title: 'Despesas Totais',
-                    value: dados.totalGasto,
-                    icon: <TrendingDown sx={{ fontSize: 40 }} />,
-                    gradient: 'linear-gradient(135deg,#fff1f2,#ffffff)',
-                  },
-                  {
-                    title: 'Saldo Atual',
-                    value: dados.saldo,
-                    icon: <AccountBalanceWallet sx={{ fontSize: 40 }} />,
-                    gradient: 'linear-gradient(135deg,#eef2ff,#ffffff)',
-                  },
-                ].map((item, i) => (
-                  <Grid item xs={12} sm={6} md={4} key={i}>
-                    <MotionCard
-                      whileHover={{ scale: 1.05, y: -10 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
-                      sx={{
-                        borderRadius: 6,
-                        p: 4,
-                        background: item.gradient,
-                        boxShadow: '0 30px 80px rgba(0,0,0,0.12)',
-                        height: '100%',
-                        backdropFilter: 'blur(20px)',
-                      }}
-                    >
-                      {item.icon}
-                      <Typography fontWeight={800} mt={2}>
-                        {item.title}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: { xs: 28, md: 42 },
-                          fontWeight: 900,
-                          mt: 1,
-                        }}
-                      >
-                        Kz {item.value.toFixed(2)}
-                      </Typography>
-                    </MotionCard>
-                  </Grid>
-                ))}
-              </Grid>
-
-              {/* GRÁFICO SURREAL */}
-              <Box
-                sx={{
-                  mt: 7,
-                  p: { xs: 2, md: 5 },
-                  borderRadius: 6,
-                  background: 'rgba(255,255,255,0.9)',
-                  backdropFilter: 'blur(25px)',
-                  boxShadow: '0 40px 120px rgba(0,0,0,0.1)',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: { xs: 20, md: 28 },
-                    fontWeight: 900,
-                    textAlign: 'center',
-                    mb: 4,
-                  }}
-                >
-                  Análise Financeira Inteligente
-                </Typography>
-
-                <Box sx={{ width: '100%', height: { xs: 280, md: 420 } }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dadosGrafico}>
-                      <CartesianGrid strokeDasharray="4 4" opacity={0.15} />
-                      <XAxis dataKey="nome" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="Contribuicao" fill="#10b981" radius={[12,12,0,0]} />
-                      <Bar dataKey="Despesas" fill="#ef4444" radius={[12,12,0,0]} />
-                      <Bar dataKey="Saldo" fill="#2563eb" radius={[12,12,0,0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-              </Box>
-            </>
-          )}
         </CardContent>
-      </MotionCard>
+      </Card>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" mt={6}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* CARDS */}
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Card sx={cardStyle('#2563eb', 'rgba(37,99,235,0.15)')}>
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Contribuição Total
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700} mt={1}>
+                    Kz {formatKz(dados.totalArrecadado)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card sx={cardStyle('#dc2626', 'rgba(220,38,38,0.15)')}>
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Despesas Totais
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700} mt={1}>
+                    Kz {formatKz(dados.totalGasto)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card sx={cardStyle('#16a34a', 'rgba(22,163,74,0.15)')}>
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Saldo Atual
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700} mt={1}>
+                    Kz {formatKz(dados.saldo)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* GRÁFICO */}
+          <Card
+            sx={{
+              mt: 5,
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.8)',
+              backdropFilter: 'blur(15px)',
+              boxShadow: '0 15px 50px rgba(0,0,0,0.06)',
+            }}
+          >
+            <CardContent>
+              <Typography variant="h6" fontWeight={700} mb={2}>
+                Análise Financeira
+              </Typography>
+
+              <Box height={{ xs: 300, md: 360 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dadosGrafico}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="nome" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `Kz ${formatKz(value)}`} />
+                    <Legend />
+                    <Bar dataKey="Contribuicao" fill="#2563eb" radius={[8,8,0,0]} />
+                    <Bar dataKey="Despesas" fill="#dc2626" radius={[8,8,0,0]} />
+                    <Bar dataKey="Saldo" fill="#16a34a" radius={[8,8,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </Box>
   );
 }
