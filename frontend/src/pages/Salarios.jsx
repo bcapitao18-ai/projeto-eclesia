@@ -24,13 +24,19 @@ import FormFuncionarios from "../components/FormFuncionarios";
 import FormSubsidios from "../components/FormSubsidios";
 import FormDescontos from "../components/FormDescontos";
 import FormSalarios from "../components/FormSalarios";
+
 import ListaFuncionarios from "../components/ListaFuncionarios";
 import ListaSalarios from "../components/ListaSalarios";
+import ListaDescontos from "../components/ListaDescontos";
+import ListaSubsidios from "../components/ListaSubsidios"; // 👈 ADICIONADO
 
 export default function GestaoSalarios() {
   const [tab, setTab] = useState(0);
+
   const [openFuncionarios, setOpenFuncionarios] = useState(false);
   const [openSalarios, setOpenSalarios] = useState(false);
+  const [openDescontos, setOpenDescontos] = useState(false);
+  const [openSubsidios, setOpenSubsidios] = useState(false); // 👈 NOVO
 
   const handleChange = (e, newValue) => setTab(newValue);
 
@@ -42,7 +48,6 @@ export default function GestaoSalarios() {
         background: "linear-gradient(135deg, #f6f8fc 0%, #eef2f7 100%)",
       }}
     >
-
       {/* HEADER PREMIUM */}
       <Card
         sx={{
@@ -63,8 +68,16 @@ export default function GestaoSalarios() {
           </Typography>
 
           <Stack direction="row" spacing={1} mt={2}>
-            <Chip label="Sistema Ativo" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
-            <Chip label="IGREJAS" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
+            <Chip
+              label="Sistema Ativo"
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }}
+            />
+            <Chip
+              label="IGREJAS"
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }}
+            />
           </Stack>
         </CardContent>
       </Card>
@@ -107,7 +120,6 @@ export default function GestaoSalarios() {
         }}
       >
         <CardContent sx={{ p: 3 }}>
-
           <Fade in={true} key={tab}>
             <Box>
 
@@ -142,6 +154,22 @@ export default function GestaoSalarios() {
                   <Typography variant="h6" fontWeight={800}>
                     Subsídios
                   </Typography>
+
+                  {/* 👇 BOTÃO NOVO */}
+                  <Button
+                    startIcon={<VisibilityIcon />}
+                    variant="contained"
+                    sx={{
+                      borderRadius: 2,
+                      background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                      textTransform: "none",
+                      fontWeight: 700,
+                    }}
+                    onClick={() => setOpenSubsidios(true)}
+                  >
+                    Ver Lista de Subsídios
+                  </Button>
+
                   <FormSubsidios />
                 </Stack>
               )}
@@ -152,6 +180,21 @@ export default function GestaoSalarios() {
                   <Typography variant="h6" fontWeight={800}>
                     Descontos
                   </Typography>
+
+                  <Button
+                    startIcon={<VisibilityIcon />}
+                    variant="contained"
+                    sx={{
+                      borderRadius: 2,
+                      background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                      textTransform: "none",
+                      fontWeight: 700,
+                    }}
+                    onClick={() => setOpenDescontos(true)}
+                  >
+                    Ver Lista de Descontos
+                  </Button>
+
                   <FormDescontos />
                 </Stack>
               )}
@@ -183,7 +226,6 @@ export default function GestaoSalarios() {
 
             </Box>
           </Fade>
-
         </CardContent>
       </Card>
 
@@ -232,6 +274,54 @@ export default function GestaoSalarios() {
 
         <DialogContent>
           <ListaSalarios />
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DESCONTOS */}
+      <Dialog
+        open={openDescontos}
+        onClose={() => setOpenDescontos(false)}
+        fullWidth
+        maxWidth="xl"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Lista de Descontos
+          <IconButton
+            onClick={() => setOpenDescontos(false)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent>
+          <ListaDescontos />
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL SUBSÍDIOS (NOVO) */}
+      <Dialog
+        open={openSubsidios}
+        onClose={() => setOpenSubsidios(false)}
+        fullWidth
+        maxWidth="xl"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Lista de Subsídios
+          <IconButton
+            onClick={() => setOpenSubsidios(false)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent>
+          <ListaSubsidios />
         </DialogContent>
       </Dialog>
 

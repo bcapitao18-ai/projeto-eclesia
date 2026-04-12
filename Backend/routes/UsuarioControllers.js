@@ -1478,6 +1478,98 @@ router.get("/subsidios", auth, async (req, res) => {
 });
 
 
+router.put("/subsidios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, percentagem, ativo } = req.body;
+
+    console.log("✏️ UPDATE SUBSIDIO:", req.body);
+
+    // 🔹 Buscar subsídio
+    const subsidio = await Subsidios.findByPk(id);
+
+    if (!subsidio) {
+      return res.status(404).json({
+        message: "Subsídio não encontrado.",
+      });
+    }
+
+    // 🔹 Atualizar dados base
+    await subsidio.update({
+      nome: nome ?? subsidio.nome,
+      ativo: ativo !== undefined ? ativo : subsidio.ativo,
+    });
+
+    // 🔥 Buscar percentagem associada
+    const percent = await PercentagemSubsidio.findOne({
+      where: { SubsidioId: id },
+    });
+
+    if (percent) {
+      await percent.update({
+        percentagem:
+          percentagem !== undefined
+            ? percentagem
+            : percent.percentagem,
+      });
+    } else {
+      // segurança caso não exista
+      await PercentagemSubsidio.create({
+        percentagem: percentagem || 0,
+        SubsidioId: id,
+      });
+    }
+
+    return res.json({
+      message: "✅ Subsídio atualizado com sucesso!",
+      subsidio,
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao atualizar subsídio:", error);
+
+    return res.status(500).json({
+      message: "Erro interno ao atualizar subsídio.",
+    });
+  }
+});
+
+router.delete("/subsidios/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("🗑️ DELETE SUBSIDIO ID:", id);
+
+    // 🔹 Buscar subsídio
+    const subsidio = await Subsidios.findByPk(id);
+
+    if (!subsidio) {
+      return res.status(404).json({
+        message: "Subsídio não encontrado.",
+      });
+    }
+
+    // 🔥 Apagar percentagem primeiro (FK safe)
+    await PercentagemSubsidio.destroy({
+      where: { SubsidioId: id },
+    });
+
+    // 🔹 Apagar subsídio
+    await subsidio.destroy();
+
+    return res.json({
+      message: "🗑️ Subsídio eliminado com sucesso!",
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao eliminar subsídio:", error);
+
+    return res.status(500).json({
+      message: "Erro interno ao eliminar subsídio.",
+    });
+  }
+});
+
 
 
 
@@ -2312,7 +2404,97 @@ router.post("/descontos", auth, async (req, res) => {
 
 
 
+router.put("/descontos/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, percentagem, descricao, ativo } = req.body;
 
+    console.log("✏️ UPDATE DESCONTO:", req.body);
+
+    // 🔹 Buscar desconto
+    const desconto = await Descontos.findByPk(id);
+
+    if (!desconto) {
+      return res.status(404).json({
+        message: "Desconto não encontrado.",
+      });
+    }
+
+    // 🔹 Atualizar dados base
+    await desconto.update({
+      nome: nome ?? desconto.nome,
+      descricao: descricao ?? desconto.descricao,
+      ativo: ativo !== undefined ? ativo : desconto.ativo,
+    });
+
+    // 🔥 Buscar percentagem ligada
+    const percent = await PercentagemDesconto.findOne({
+      where: { DescontoId: id },
+    });
+
+    if (percent) {
+      await percent.update({
+        percentagem:
+          percentagem !== undefined
+            ? percentagem
+            : percent.percentagem,
+      });
+    } else {
+      // caso não exista (segurança)
+      await PercentagemDesconto.create({
+        percentagem: percentagem || 0,
+        DescontoId: id,
+      });
+    }
+
+    return res.json({
+      message: "✅ Desconto atualizado com sucesso!",
+      desconto,
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao atualizar desconto:", error);
+    return res.status(500).json({
+      message: "Erro interno ao atualizar desconto.",
+    });
+  }
+});
+
+
+router.delete("/descontos/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("🗑️ DELETE DESCONTO ID:", id);
+
+    // 🔹 Buscar desconto
+    const desconto = await Descontos.findByPk(id);
+
+    if (!desconto) {
+      return res.status(404).json({
+        message: "Desconto não encontrado.",
+      });
+    }
+
+    // 🔥 Apagar percentagem primeiro (FK safe)
+    await PercentagemDesconto.destroy({
+      where: { DescontoId: id },
+    });
+
+    // 🔹 Apagar desconto
+    await desconto.destroy();
+
+    return res.json({
+      message: "🗑️ Desconto eliminado com sucesso!",
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao eliminar desconto:", error);
+    return res.status(500).json({
+      message: "Erro interno ao eliminar desconto.",
+    });
+  }
+});
 
 
 
