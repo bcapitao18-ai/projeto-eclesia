@@ -1,524 +1,240 @@
-// src/pages/GestaoSalarios.jsx
 import React, { useState } from "react";
 import {
   Box,
   Typography,
+  Tabs,
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
   Button,
   Stack,
-  Breadcrumbs,
-  Link,
   Divider,
-  Modal,
-  IconButton,
+  Card,
+  CardContent,
+  Fade,
+  Chip,
 } from "@mui/material";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  People,
-  Payment,
-  Discount,
-  AccountBalanceWallet,
-  NavigateNext,
-  Visibility,
-  Close,
-} from "@mui/icons-material";
+
+import CloseIcon from "@mui/icons-material/Close";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 import FormFuncionarios from "../components/FormFuncionarios";
 import FormSubsidios from "../components/FormSubsidios";
 import FormDescontos from "../components/FormDescontos";
 import FormSalarios from "../components/FormSalarios";
 import ListaFuncionarios from "../components/ListaFuncionarios";
-
-// 🔥 NOVO: LISTA DE SALÁRIOS EFETUADOS (VAI USAR A ROTA /salarios)
 import ListaSalarios from "../components/ListaSalarios";
 
 export default function GestaoSalarios() {
-  const [formAtivo, setFormAtivo] = useState("funcionarios");
+  const [tab, setTab] = useState(0);
+  const [openFuncionarios, setOpenFuncionarios] = useState(false);
+  const [openSalarios, setOpenSalarios] = useState(false);
 
-  // MODAL FUNCIONÁRIOS
-  const [openModalFuncionarios, setOpenModalFuncionarios] = useState(false);
-  const handleOpenFuncionarios = () => setOpenModalFuncionarios(true);
-  const handleCloseFuncionarios = () => setOpenModalFuncionarios(false);
-
-  // 🔥 NOVO: MODAL SALÁRIOS EFETUADOS
-  const [openModalSalarios, setOpenModalSalarios] = useState(false);
-  const handleOpenSalarios = () => setOpenModalSalarios(true);
-  const handleCloseSalarios = () => setOpenModalSalarios(false);
-
-  const modulos = {
-    funcionarios: {
-      titulo: "Gestão de Funcionários",
-      descricao:
-        "Cadastre, visualize e administre todos os funcionários com controlo total, rastreabilidade e organização empresarial de alto nível.",
-      componente: (
-        <Stack spacing={4}>
-          {/* HEADER PREMIUM */}
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: "24px",
-              background:
-                "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-              color: "#fff",
-              boxShadow: "0 25px 60px rgba(2,6,23,0.35)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography
-                variant="h6"
-                fontWeight={900}
-                sx={{ letterSpacing: "0.5px" }}
-              >
-                Painel Corporativo de Funcionários
-              </Typography>
-              <Typography sx={{ opacity: 0.85, fontSize: "0.92rem" }}>
-                Gestão inteligente, visual premium e controlo estratégico do
-                capital humano
-              </Typography>
-            </Box>
-
-            <Button
-              startIcon={<Visibility />}
-              onClick={handleOpenFuncionarios}
-              sx={{
-                textTransform: "none",
-                fontWeight: 900,
-                px: 3,
-                py: 1.4,
-                borderRadius: "16px",
-                color: "#fff",
-                background:
-                  "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-                boxShadow: "0 15px 40px rgba(37,99,235,0.5)",
-                letterSpacing: "0.4px",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateY(-3px) scale(1.03)",
-                  background:
-                    "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-                  boxShadow: "0 20px 50px rgba(37,99,235,0.65)",
-                },
-              }}
-            >
-              Ver Funcionários
-            </Button>
-          </Box>
-
-          {/* FORMULÁRIO */}
-          <Box
-            sx={{
-              p: 4,
-              borderRadius: "28px",
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 30px 80px rgba(2,6,23,0.06)",
-            }}
-          >
-            <FormFuncionarios />
-          </Box>
-
-          {/* MODAL FUNCIONÁRIOS */}
-          <AnimatePresence>
-            {openModalFuncionarios && (
-              <Modal
-                open={openModalFuncionarios}
-                onClose={handleCloseFuncionarios}
-                closeAfterTransition
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backdropFilter: "blur(18px)",
-                  background:
-                    "linear-gradient(180deg, rgba(2,6,23,0.75) 0%, rgba(15,23,42,0.9) 100%)",
-                  p: 2,
-                }}
-              >
-                <Box
-                  component={motion.div}
-                  initial={{ opacity: 0, scale: 0.85, y: 80 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 60 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  sx={{
-                    position: "relative",
-                    width: "100%",
-                    maxWidth: "1500px",
-                    maxHeight: "92vh",
-                    display: "flex",
-                    flexDirection: "column",
-                    borderRadius: "32px",
-                    overflow: "hidden",
-                    background:
-                      "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-                    boxShadow:
-                      "0 80px 180px rgba(2,6,23,0.7), 0 20px 60px rgba(0,0,0,0.25)",
-                    border: "1px solid rgba(255,255,255,0.6)",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      px: 4,
-                      py: 3,
-                      background:
-                        "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-                      color: "#fff",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Typography variant="h5" fontWeight={900}>
-                      Lista Premium de Funcionários
-                    </Typography>
-
-                    <IconButton
-                      onClick={handleCloseFuncionarios}
-                      sx={{
-                        background: "rgba(255,255,255,0.12)",
-                        color: "#fff",
-                        borderRadius: "14px",
-                      }}
-                    >
-                      <Close />
-                    </IconButton>
-                  </Box>
-
-                  <Box sx={{ p: 4, overflowY: "auto", flex: 1 }}>
-                    <ListaFuncionarios />
-                  </Box>
-                </Box>
-              </Modal>
-            )}
-          </AnimatePresence>
-        </Stack>
-      ),
-    },
-
-    subsidios: {
-      titulo: "Gestão de Subsídios",
-      descricao:
-        "Configure benefícios e incentivos salariais com precisão financeira e gestão estratégica empresarial.",
-      componente: <FormSubsidios />,
-    },
-
-    descontos: {
-      titulo: "Gestão de Descontos",
-      descricao:
-        "Defina políticas de descontos com segurança, transparência e controlo financeiro avançado.",
-      componente: <FormDescontos />,
-    },
-
-    // 🔥 AQUI ESTÁ A MUDANÇA PRINCIPAL
-    salarios: {
-      titulo: "Processamento Salarial",
-      descricao:
-        "Execute o processamento completo de salários com auditoria, eficiência e segurança corporativa.",
-      componente: (
-        <Stack spacing={4}>
-          {/* HEADER COM BOTÃO VER SALÁRIOS */}
-          <Box
-            sx={{
-              p: 3,
-              borderRadius: "24px",
-              background:
-                "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-              color: "#fff",
-              boxShadow: "0 25px 60px rgba(2,6,23,0.35)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="h6" fontWeight={900}>
-                Painel de Processamento Salarial
-              </Typography>
-              <Typography sx={{ opacity: 0.85, fontSize: "0.92rem" }}>
-                Processamento, auditoria e visualização dos salários efetuados
-              </Typography>
-            </Box>
-
-            {/* 🔥 NOVO BOTÃO */}
-            <Button
-              startIcon={<Visibility />}
-              onClick={handleOpenSalarios}
-              sx={{
-                textTransform: "none",
-                fontWeight: 900,
-                px: 3,
-                py: 1.4,
-                borderRadius: "16px",
-                color: "#fff",
-                background:
-                  "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-                boxShadow: "0 15px 40px rgba(22,163,74,0.45)",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateY(-3px) scale(1.03)",
-                  background:
-                    "linear-gradient(135deg, #15803d 0%, #166534 100%)",
-                },
-              }}
-            >
-              Ver Salários Efetuados
-            </Button>
-          </Box>
-
-          {/* FORM DE PROCESSAMENTO (INALTERADO) */}
-          <Box
-            sx={{
-              p: 4,
-              borderRadius: "28px",
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 30px 80px rgba(2,6,23,0.06)",
-            }}
-          >
-            <FormSalarios />
-          </Box>
-
-          {/* 🔥 MODAL LISTA DE SALÁRIOS EFETUADOS */}
-          <AnimatePresence>
-            {openModalSalarios && (
-              <Modal
-                open={openModalSalarios}
-                onClose={handleCloseSalarios}
-                closeAfterTransition
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backdropFilter: "blur(18px)",
-                  background:
-                    "linear-gradient(180deg, rgba(2,6,23,0.75) 0%, rgba(15,23,42,0.9) 100%)",
-                  p: 2,
-                }}
-              >
-                <Box
-                  component={motion.div}
-                  initial={{ opacity: 0, scale: 0.85, y: 80 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 60 }}
-                  transition={{ duration: 0.4 }}
-                  sx={{
-                    position: "relative",
-                    width: "100%",
-                    maxWidth: "1500px",
-                    maxHeight: "92vh",
-                    display: "flex",
-                    flexDirection: "column",
-                    borderRadius: "32px",
-                    overflow: "hidden",
-                    background:
-                      "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-                    boxShadow:
-                      "0 80px 180px rgba(2,6,23,0.7), 0 20px 60px rgba(0,0,0,0.25)",
-                    border: "1px solid rgba(255,255,255,0.6)",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      px: 4,
-                      py: 3,
-                      background:
-                        "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-                      color: "#fff",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Typography variant="h5" fontWeight={900}>
-                      Lista de Salários Efetuados
-                    </Typography>
-
-                    <IconButton
-                      onClick={handleCloseSalarios}
-                      sx={{
-                        background: "rgba(255,255,255,0.12)",
-                        color: "#fff",
-                        borderRadius: "14px",
-                      }}
-                    >
-                      <Close />
-                    </IconButton>
-                  </Box>
-
-                  <Box
-                    sx={{
-                      p: 4,
-                      overflowY: "auto",
-                      flex: 1,
-                      background:
-                        "radial-gradient(circle at top, #ffffff 0%, #f1f5f9 100%)",
-                    }}
-                  >
-                    <ListaSalarios />
-                  </Box>
-                </Box>
-              </Modal>
-            )}
-          </AnimatePresence>
-        </Stack>
-      ),
-    },
-  };
-
-  const menuButtonStyles = (active) => ({
-    justifyContent: "flex-start",
-    borderRadius: "20px",
-    px: 3,
-    py: 2,
-    fontWeight: 900,
-    textTransform: "none",
-    width: "100%",
-    color: active ? "#ffffff" : "#0f172a",
-    background: active
-      ? "linear-gradient(135deg, #020617 0%, #1e3a8a 100%)"
-      : "#ffffff",
-    border: active
-      ? "1px solid rgba(255,255,255,0.15)"
-      : "1px solid #e2e8f0",
-    boxShadow: active
-      ? "0 20px 45px rgba(30,58,138,0.35)"
-      : "0 6px 18px rgba(0,0,0,0.05)",
-    "&:hover": {
-      transform: "translateX(6px) scale(1.02)",
-      background: active
-        ? "linear-gradient(135deg, #020617 0%, #1e40af 100%)"
-        : "#f8fafc",
-    },
-  });
+  const handleChange = (e, newValue) => setTab(newValue);
 
   return (
     <Box
       sx={{
-        width: "100%",
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #eef2f7 100%)",
-        px: { xs: 2, md: 6 },
-        py: 5,
+        p: 3,
+        background: "linear-gradient(135deg, #f6f8fc 0%, #eef2f7 100%)",
       }}
     >
-      <Breadcrumbs
-        separator={<NavigateNext fontSize="small" />}
-        sx={{ mb: 3 }}
-      >
-        <Link underline="hover" sx={{ fontWeight: 700, color: "#64748b" }}>
-          RH
-        </Link>
-        <Link underline="hover" sx={{ fontWeight: 700, color: "#64748b" }}>
-          Gestão Financeira
-        </Link>
-        <Typography sx={{ fontWeight: 900, color: "#020617" }}>
-          {modulos[formAtivo].titulo}
-        </Typography>
-      </Breadcrumbs>
 
-      <Box
+      {/* HEADER PREMIUM */}
+      <Card
         sx={{
-          display: "flex",
-          gap: 4,
-          flexDirection: { xs: "column", md: "row" },
+          mb: 3,
+          borderRadius: 3,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+          color: "white",
         }}
       >
-        {/* SIDEBAR (INALTERADA) */}
-        <Box
-          sx={{
-            width: { xs: "100%", md: 320 },
-            minWidth: 300,
-            borderRadius: "28px",
-            p: 3,
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 25px 60px rgba(15,23,42,0.06)",
-            height: "fit-content",
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight={900} sx={{ mb: 2 }}>
-            MÓDULOS SALARIAIS
+        <CardContent>
+          <Typography variant="h5" fontWeight={800}>
+            Gestão de Salários
           </Typography>
 
-          <Divider sx={{ mb: 3 }} />
+          <Typography variant="body2" sx={{ opacity: 0.85 }}>
+            Administração de funcionários - membros, subsídios, descontos e processamento salarial
+          </Typography>
 
-          <Stack spacing={2}>
-            <Button
-              startIcon={<People />}
-              onClick={() => setFormAtivo("funcionarios")}
-              sx={menuButtonStyles(formAtivo === "funcionarios")}
-            >
-              Gestão de Funcionários
-            </Button>
-
-            <Button
-              startIcon={<Payment />}
-              onClick={() => setFormAtivo("subsidios")}
-              sx={menuButtonStyles(formAtivo === "subsidios")}
-            >
-              Gestão de Subsídios
-            </Button>
-
-            <Button
-              startIcon={<Discount />}
-              onClick={() => setFormAtivo("descontos")}
-              sx={menuButtonStyles(formAtivo === "descontos")}
-            >
-              Gestão de Descontos
-            </Button>
-
-            <Button
-              startIcon={<AccountBalanceWallet />}
-              onClick={() => setFormAtivo("salarios")}
-              sx={menuButtonStyles(formAtivo === "salarios")}
-            >
-              Processamento Salarial
-            </Button>
+          <Stack direction="row" spacing={1} mt={2}>
+            <Chip label="Sistema Ativo" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
+            <Chip label="IGREJAS" size="small" sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
           </Stack>
-        </Box>
+        </CardContent>
+      </Card>
 
-        {/* CONTEÚDO */}
-        <Box sx={{ flex: 1 }}>
-          <Box
-            sx={{
-              mb: 3,
-              p: 4,
-              borderRadius: "28px",
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 20px 50px rgba(2,6,23,0.05)",
-            }}
+      {/* TABS PREMIUM */}
+      <Card
+        sx={{
+          mb: 3,
+          borderRadius: 3,
+          overflow: "hidden",
+          boxShadow: "0 8px 25px rgba(0,0,0,0.06)",
+        }}
+      >
+        <Tabs
+          value={tab}
+          onChange={handleChange}
+          variant="fullWidth"
+          sx={{
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "0.95rem",
+              py: 2,
+            },
+          }}
+        >
+          <Tab label="Funcionários" />
+          <Tab label="Subsídios" />
+          <Tab label="Descontos" />
+          <Tab label="Salários" />
+        </Tabs>
+      </Card>
+
+      {/* CONTEÚDO */}
+      <Card
+        sx={{
+          borderRadius: 3,
+          minHeight: 420,
+          boxShadow: "0 12px 35px rgba(0,0,0,0.08)",
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+
+          <Fade in={true} key={tab}>
+            <Box>
+
+              {/* FUNCIONÁRIOS */}
+              {tab === 0 && (
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={800}>
+                    Funcionários
+                  </Typography>
+
+                  <Button
+                    startIcon={<VisibilityIcon />}
+                    variant="contained"
+                    sx={{
+                      borderRadius: 2,
+                      background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                      textTransform: "none",
+                      fontWeight: 700,
+                    }}
+                    onClick={() => setOpenFuncionarios(true)}
+                  >
+                    Ver Funcionários
+                  </Button>
+
+                  <FormFuncionarios />
+                </Stack>
+              )}
+
+              {/* SUBSÍDIOS */}
+              {tab === 1 && (
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={800}>
+                    Subsídios
+                  </Typography>
+                  <FormSubsidios />
+                </Stack>
+              )}
+
+              {/* DESCONTOS */}
+              {tab === 2 && (
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={800}>
+                    Descontos
+                  </Typography>
+                  <FormDescontos />
+                </Stack>
+              )}
+
+              {/* SALÁRIOS */}
+              {tab === 3 && (
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={800}>
+                    Processamento Salarial
+                  </Typography>
+
+                  <Button
+                    startIcon={<VisibilityIcon />}
+                    variant="contained"
+                    sx={{
+                      borderRadius: 2,
+                      background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                      textTransform: "none",
+                      fontWeight: 700,
+                    }}
+                    onClick={() => setOpenSalarios(true)}
+                  >
+                    Ver Salários Efetuados
+                  </Button>
+
+                  <FormSalarios />
+                </Stack>
+              )}
+
+            </Box>
+          </Fade>
+
+        </CardContent>
+      </Card>
+
+      {/* MODAL FUNCIONÁRIOS */}
+      <Dialog
+        open={openFuncionarios}
+        onClose={() => setOpenFuncionarios(false)}
+        fullWidth
+        maxWidth="xl"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Lista de Funcionários
+          <IconButton
+            onClick={() => setOpenFuncionarios(false)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
           >
-            <Typography variant="h5" fontWeight={900}>
-              {modulos[formAtivo].titulo}
-            </Typography>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
 
-            <Typography sx={{ color: "#64748b", mt: 1 }}>
-              {modulos[formAtivo].descricao}
-            </Typography>
-          </Box>
+        <Divider />
 
-          <Box
-            sx={{
-              borderRadius: "32px",
-              padding: "45px",
-              minHeight: "560px",
-              background: "#ffffff",
-              boxShadow: "0 40px 100px rgba(2,6,23,0.07)",
-              border: "1px solid #e2e8f0",
-            }}
+        <DialogContent>
+          <ListaFuncionarios />
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL SALÁRIOS */}
+      <Dialog
+        open={openSalarios}
+        onClose={() => setOpenSalarios(false)}
+        fullWidth
+        maxWidth="xl"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Salários Efetuados
+          <IconButton
+            onClick={() => setOpenSalarios(false)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
           >
-            {modulos[formAtivo].componente}
-          </Box>
-        </Box>
-      </Box>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent>
+          <ListaSalarios />
+        </DialogContent>
+      </Dialog>
+
     </Box>
   );
 }

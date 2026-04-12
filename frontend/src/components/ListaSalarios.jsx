@@ -22,6 +22,7 @@ import {
   Button,
   Backdrop,
 } from "@mui/material";
+
 import { motion } from "framer-motion";
 import {
   MonetizationOn,
@@ -30,6 +31,7 @@ import {
   Delete,
   WarningAmber,
 } from "@mui/icons-material";
+
 import api from "../api/axiosConfig";
 import FormSalario from "./FormSalarios";
 
@@ -40,7 +42,6 @@ export default function ListaSalarios() {
   const [openModal, setOpenModal] = useState(false);
   const [salarioSelecionado, setSalarioSelecionado] = useState(null);
 
-  // NOVO: Modal surreal de confirmação
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [salarioParaEliminar, setSalarioParaEliminar] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -48,11 +49,14 @@ export default function ListaSalarios() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  // =========================
+  // FETCH SALÁRIOS (NOVO ENDPOINT)
+  // =========================
   const fetchSalarios = async () => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await api.get("/salarios", {
+      const res = await api.get("/salarios/lista", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -68,12 +72,17 @@ export default function ListaSalarios() {
     fetchSalarios();
   }, []);
 
+  // =========================
+  // EDITAR
+  // =========================
   const handleEditar = (salario) => {
     setSalarioSelecionado(salario);
     setOpenModal(true);
   };
 
-  // ABRE MODAL SURREAL (em vez de alert)
+  // =========================
+  // ELIMINAR
+  // =========================
   const handleEliminar = (salario) => {
     setSalarioParaEliminar(salario);
     setOpenDeleteModal(true);
@@ -100,6 +109,9 @@ export default function ListaSalarios() {
     }
   };
 
+  // =========================
+  // LOADING
+  // =========================
   if (loading) {
     return (
       <Box
@@ -114,7 +126,7 @@ export default function ListaSalarios() {
       >
         <CircularProgress size={42} thickness={4} />
         <Typography fontWeight={700} color="#64748b">
-          A carregar pagamentos salariais...
+          A carregar salários...
         </Typography>
       </Box>
     );
@@ -127,7 +139,8 @@ export default function ListaSalarios() {
       transition={{ duration: 0.45 }}
     >
       <Box>
-        {/* HEADER PREMIUM */}
+
+        {/* HEADER */}
         <Box
           sx={{
             mb: 3,
@@ -136,7 +149,6 @@ export default function ListaSalarios() {
             background:
               "linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%)",
             color: "#fff",
-            boxShadow: "0 25px 60px rgba(2,6,23,0.35)",
           }}
         >
           <Stack direction="row" spacing={2} alignItems="center">
@@ -148,37 +160,31 @@ export default function ListaSalarios() {
                   "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)",
               }}
             >
-              <MonetizationOn sx={{ fontSize: 30 }} />
+              <MonetizationOn />
             </Avatar>
 
             <Box>
-              <Typography variant={isMobile ? "h6" : "h5"} fontWeight={900}>
-                Lista de Salários Efetuados
+              <Typography variant="h5" fontWeight={900}>
+                Lista de Salários
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                Histórico completo de pagamentos salariais
+                Histórico de pagamentos efetuados
               </Typography>
             </Box>
           </Stack>
         </Box>
 
+        {/* TABLE */}
         <Paper
           sx={{
             borderRadius: "26px",
             overflow: "hidden",
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 30px 80px rgba(2,6,23,0.06)",
+            background: "#fff",
           }}
         >
           <Table>
             <TableHead>
-              <TableRow
-                sx={{
-                  background:
-                    "linear-gradient(135deg, #020617 0%, #0f172a 100%)",
-                }}
-              >
+              <TableRow sx={{ background: "#0f172a" }}>
                 <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
                   Funcionário
                 </TableCell>
@@ -186,10 +192,16 @@ export default function ListaSalarios() {
                   Mês/Ano
                 </TableCell>
                 <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
-                  Salário Base
+                  Base
                 </TableCell>
                 <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
-                  Total Pago
+                  Subsídios
+                </TableCell>
+                <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
+                  Descontos
+                </TableCell>
+                <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
+                  Líquido
                 </TableCell>
                 <TableCell sx={{ color: "#fff", fontWeight: 900 }}>
                   Ações
@@ -198,18 +210,13 @@ export default function ListaSalarios() {
             </TableHead>
 
             <TableBody>
-              {salarios.map((s, index) => (
-                <TableRow
-                  key={s.id}
-                  component={motion.tr}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  hover
-                >
+              {salarios.map((s) => (
+                <TableRow key={s.id} hover>
+
+                  {/* FUNCIONÁRIO */}
                   <TableCell>
                     <Stack direction="row" spacing={2} alignItems="center">
-                      <Avatar sx={{ bgcolor: "#1e3a8a", fontWeight: 900 }}>
+                      <Avatar sx={{ bgcolor: "#1e3a8a" }}>
                         {s.Funcionario?.Membro?.nome?.charAt(0) || "F"}
                       </Avatar>
                       <Typography fontWeight={800}>
@@ -218,58 +225,54 @@ export default function ListaSalarios() {
                     </Stack>
                   </TableCell>
 
+                  {/* MES */}
                   <TableCell>
                     <Chip
                       icon={<CalendarMonth />}
                       label={s.mes_ano}
-                      sx={{
-                        fontWeight: 800,
-                        borderRadius: "12px",
-                        background: "#eef2ff",
-                        color: "#1e3a8a",
-                      }}
+                      sx={{ fontWeight: 700 }}
                     />
                   </TableCell>
 
+                  {/* BASE */}
                   <TableCell>
-                    <Typography fontWeight={900}>
-                      {Number(s.salario_base || 0).toLocaleString()} Kz
+                    {Number(s.salario_base).toLocaleString()} Kz
+                  </TableCell>
+
+                  {/* SUBS */}
+                  <TableCell>
+                    <Typography color="green" fontWeight={700}>
+                      +{Number(s.total_subsidios).toLocaleString()} Kz
                     </Typography>
                   </TableCell>
 
+                  {/* DESC */}
+                  <TableCell>
+                    <Typography color="red" fontWeight={700}>
+                      -{Number(s.total_descontos).toLocaleString()} Kz
+                    </Typography>
+                  </TableCell>
+
+                  {/* LÍQUIDO */}
                   <TableCell>
                     <Typography fontWeight={900} color="#16a34a">
-                      {Number(s.salario_liquido || 0).toLocaleString()} Kz
+                      {Number(s.salario_liquido).toLocaleString()} Kz
                     </Typography>
                   </TableCell>
 
+                  {/* AÇÕES */}
                   <TableCell>
                     <Stack direction="row" spacing={1}>
-                      <Tooltip title="Editar salário">
-                        <IconButton
-                          onClick={() => handleEditar(s)}
-                          sx={{
-                            bgcolor: "#eef2ff",
-                            "&:hover": { bgcolor: "#c7d2fe" },
-                          }}
-                        >
-                          <Edit sx={{ color: "#1e3a8a" }} />
-                        </IconButton>
-                      </Tooltip>
+                      <IconButton onClick={() => handleEditar(s)}>
+                        <Edit />
+                      </IconButton>
 
-                      <Tooltip title="Eliminar salário">
-                        <IconButton
-                          onClick={() => handleEliminar(s)}
-                          sx={{
-                            bgcolor: "#fee2e2",
-                            "&:hover": { bgcolor: "#fecaca" },
-                          }}
-                        >
-                          <Delete sx={{ color: "#b91c1c" }} />
-                        </IconButton>
-                      </Tooltip>
+                      <IconButton onClick={() => handleEliminar(s)}>
+                        <Delete color="error" />
+                      </IconButton>
                     </Stack>
                   </TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
@@ -277,35 +280,27 @@ export default function ListaSalarios() {
 
           <Divider />
 
-          <Box
-            sx={{
-              p: 2.5,
-              background: "#f8fafc",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
+          <Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}>
             <Typography fontWeight={800}>
-              Total de Pagamentos: {salarios.length}
+              Total: {salarios.length} salários
             </Typography>
-            <Typography fontWeight={600} color="#64748b">
-              Sistema Salarial • Histórico Financeiro
+            <Typography color="gray">
+              Sistema de Gestão Salarial
             </Typography>
           </Box>
         </Paper>
 
-        {/* MODAL DE EDIÇÃO */}
+        {/* EDIT MODAL */}
         <Dialog
           open={openModal}
           onClose={() => setOpenModal(false)}
-          maxWidth="lg"
           fullWidth
-          fullScreen={isMobile}
+          maxWidth="lg"
         >
-          <DialogContent sx={{ p: 0 }}>
+          <DialogContent>
             <FormSalario
               salarioEditando={salarioSelecionado}
-              onSuccess={() => {
+              onSalvo={() => {
                 setOpenModal(false);
                 fetchSalarios();
               }}
@@ -313,113 +308,23 @@ export default function ListaSalarios() {
           </DialogContent>
         </Dialog>
 
-        {/* MODAL SURREAL DE CONFIRMAÇÃO (ELEGANTE) */}
-        <Dialog
-          open={openDeleteModal}
-          onClose={() => !deleting && setOpenDeleteModal(false)}
-          BackdropComponent={Backdrop}
-          BackdropProps={{
-            timeout: 400,
-            sx: {
-              backdropFilter: "blur(6px)",
-              background: "rgba(2,6,23,0.75)",
-            },
-          }}
-        >
-          <DialogContent sx={{ p: 0, borderRadius: "24px", overflow: "hidden" }}>
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 120 }}
-            >
-              <Box
-                sx={{
-                  p: 4,
-                  minWidth: isMobile ? 280 : 420,
-                  textAlign: "center",
-                  background:
-                    "linear-gradient(135deg, #020617 0%, #0f172a 60%, #111827 100%)",
-                  color: "#fff",
-                  position: "relative",
-                }}
-              >
-                {/* Aura surreal suave */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: -40,
-                    left: -40,
-                    width: 160,
-                    height: 160,
-                    background:
-                      "radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)",
-                    filter: "blur(30px)",
-                  }}
-                />
+        {/* DELETE MODAL */}
+        <Dialog open={openDeleteModal}>
+          <DialogContent>
+            <Typography fontWeight={900}>
+              Confirmar eliminação?
+            </Typography>
 
-                <Avatar
-                  sx={{
-                    width: 70,
-                    height: 70,
-                    margin: "0 auto 16px auto",
-                    background:
-                      "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                    boxShadow: "0 0 35px rgba(239,68,68,0.6)",
-                  }}
-                >
-                  <WarningAmber sx={{ fontSize: 38 }} />
-                </Avatar>
+            <Button onClick={confirmarEliminacao}>
+              {deleting ? "A eliminar..." : "Eliminar"}
+            </Button>
 
-                <Typography variant="h5" fontWeight={900} mb={1}>
-                  Confirmar Eliminação
-                </Typography>
-
-                <Typography sx={{ opacity: 0.8, mb: 3 }}>
-                  Esta ação irá remover permanentemente o salário de{" "}
-                  <strong>
-                    {salarioParaEliminar?.Funcionario?.Membro?.nome ||
-                      "Funcionário"}
-                  </strong>
-                  .
-                </Typography>
-
-                <Stack direction="row" spacing={2} justifyContent="center">
-                  <Button
-                    variant="outlined"
-                    onClick={() => setOpenDeleteModal(false)}
-                    disabled={deleting}
-                    sx={{
-                      borderRadius: "12px",
-                      color: "#cbd5f5",
-                      borderColor: "#334155",
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-
-                  <Button
-                    variant="contained"
-                    onClick={confirmarEliminacao}
-                    disabled={deleting}
-                    sx={{
-                      borderRadius: "12px",
-                      fontWeight: 800,
-                      background:
-                        "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                      boxShadow: "0 10px 30px rgba(239,68,68,0.4)",
-                      "&:hover": {
-                        background:
-                          "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-                      },
-                    }}
-                  >
-                    {deleting ? "A eliminar..." : "Eliminar Permanentemente"}
-                  </Button>
-                </Stack>
-              </Box>
-            </motion.div>
+            <Button onClick={() => setOpenDeleteModal(false)}>
+              Cancelar
+            </Button>
           </DialogContent>
         </Dialog>
+
       </Box>
     </motion.div>
   );

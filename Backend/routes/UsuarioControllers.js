@@ -81,7 +81,13 @@ const AgendaPastoral = require("../modells/AgendaPastoral");
 
 
 const Sede  = require("../modells/Sede")
-const Filhal = require("../modells/filhal")
+const Filhal = require("../modells/filhal");
+
+const PercentagemSubsidio =  require("../modells/PercentagemSubsidios");
+const PercentagemDesconto =  require("../modells/PercentagemDesconto");
+
+
+
 
 const {fn, col } = require('sequelize');
 
@@ -1304,6 +1310,65 @@ router.get("/salarios", auth, async (req, res) => {
 
 
 
+// GET /salarios/lista - LISTA SIMPLES PARA TABELA FRONTEND
+router.get("/salarios/lista", auth, async (req, res) => {
+  try {
+    const { SedeId, FilhalId } = req.usuario;
+
+    let where = {};
+
+    // filtro hierárquico
+    if (SedeId) {
+      where.SedeId = SedeId;
+    } else if (FilhalId) {
+      where.FilhalId = FilhalId;
+    }
+
+    const salarios = await Salarios.findAll({
+      where,
+      include: [
+        {
+          model: Funcionarios,
+          include: [
+            {
+              model: Membros,
+              attributes: ["id", "nome"],
+            },
+          ],
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
+
+    // 🔥 FORMATAR PARA FRONTEND (IMPORTANTE)
+    const resultado = salarios.map((s) => ({
+      id: s.id,
+      mes_ano: s.mes_ano,
+      salario_base: Number(s.salario_base || 0),
+      total_subsidios: Number(s.total_subsidios || 0),
+      total_descontos: Number(s.total_descontos || 0),
+      salario_liquido: Number(s.salario_liquido || 0),
+
+      Funcionario: {
+        id: s.Funcionario?.id,
+        Membro: {
+          nome: s.Funcionario?.Membro?.nome || "Sem Nome",
+        },
+      },
+    }));
+
+    return res.json({
+      salarios: resultado,
+    });
+
+  } catch (error) {
+    console.error("Erro ao listar salários:", error);
+    return res.status(500).json({
+      message: "Erro interno ao listar salários.",
+    });
+  }
+});
+
 
 
 // 🔹 Listar funcionários ativos com o nome do membro (filtrando por Sede/Filhal)
@@ -1341,12 +1406,22 @@ router.get("/funcionarios", auth, async (req, res) => {
 
 
 
-// 🔹 Listar subsídios ativos (filtrando por Sede/Filhal)
+
+
+
+
+
+
+
+
+
+
+// 🔹 Listar subsídios ativos (filtrando por Sede/Filial) + percentagem já tratada
 router.get("/subsidios", auth, async (req, res) => {
   try {
     const { SedeId, FilhalId } = req.usuario;
 
-    let where = { ativo: true };
+    let where = { ativo: 1 };
 
     // Filtro hierárquico
     if (SedeId && !FilhalId) {
@@ -1358,43 +1433,110 @@ router.get("/subsidios", auth, async (req, res) => {
     const subsidios = await Subsidios.findAll({
       where,
       order: [["id", "ASC"]],
+      include: [
+        {
+          model: PercentagemSubsidio,
+          // ⚠️ NÃO usamos "as" aqui porque teu retorno já mostrou plural automático
+          required: false,
+        },
+      ],
     });
 
-    res.json(subsidios);
+    // 🔥 FORMATAR RESULTADO (AQUI ESTÁ A CORREÇÃO PRINCIPAL)
+    const subsidiosFormatados = subsidios.map((s) => {
+      const percentagem =
+        s.PercentagemSubsidios?.[0]?.percentagem || 0;
+
+      return {
+        id: s.id,
+        nome: s.nome,
+        valor: s.valor,
+        percentagem, // 👈 já pronto pro frontend
+        ativo: s.ativo,
+        SedeId: s.SedeId,
+        FilhalId: s.FilhalId,
+      };
+    });
+
+    // 🔍 DEBUG LIMPO
+    console.log("========== SUBSIDIOS FORMATADOS ==========");
+    subsidiosFormatados.forEach((s) => {
+      console.log(
+        `ID: ${s.id} | ${s.nome} | ${s.percentagem}%`
+      );
+    });
+    console.log("==========================================");
+
+    return res.json(subsidiosFormatados);
+
   } catch (error) {
     console.error("Erro ao listar subsídios:", error);
-    res.status(500).json({ message: "Erro interno ao listar subsídios." });
+    return res.status(500).json({
+      message: "Erro interno ao listar subsídios.",
+    });
   }
 });
 
 
-// 🔹 Listar descontos ativos (filtrando por Sede/Filhal)
+
+
+
+
+
+
+
+
+
+
+
+
 router.get("/descontos", auth, async (req, res) => {
   try {
     const { SedeId, FilhalId } = req.usuario;
 
     let where = { ativo: true };
 
-    // Filtro hierárquico
     if (SedeId && !FilhalId) {
       where.SedeId = SedeId;
     } else if (SedeId && FilhalId) {
       where.FilhalId = FilhalId;
     }
 
-    const descontos = await Descontos.findAll({
+    const descontosRaw = await Descontos.findAll({
       where,
       order: [["id", "ASC"]],
+      include: [
+        {
+          model: PercentagemDesconto,
+          required: false,
+        },
+      ],
     });
 
-    res.json(descontos);
+    const descontos = descontosRaw.map((d) => {
+      const percentagem =
+        d.PercentagemDescontos?.[0]?.percentagem || 0;
+
+      return {
+        id: d.id,
+        nome: d.nome,
+        descricao: d.descricao,
+        percentagem,
+        ativo: d.ativo,
+        SedeId: d.SedeId,
+        FilhalId: d.FilhalId,
+      };
+    });
+
+    return res.json(descontos);
+
   } catch (error) {
     console.error("Erro ao listar descontos:", error);
-    res.status(500).json({ message: "Erro interno ao listar descontos." });
+    return res.status(500).json({
+      message: "Erro interno ao listar descontos.",
+    });
   }
 });
-
-
 
 
 router.post("/salarios", auth, async (req, res) => {
@@ -1406,7 +1548,6 @@ router.post("/salarios", auth, async (req, res) => {
       descontosAplicados = []
     } = req.body;
 
-    // 🔹 Buscar o funcionário com o membro associado
     const funcionario = await Funcionarios.findByPk(FuncionarioId, {
       include: [{ model: Membros, as: "Membro" }]
     });
@@ -1415,65 +1556,128 @@ router.post("/salarios", auth, async (req, res) => {
       return res.status(404).json({ message: "Funcionário não encontrado." });
     }
 
-    const salario_base = parseFloat(funcionario.salario_base);
+    const salario_base = parseFloat(funcionario.salario_base || 0);
 
-    // 🔹 Somar subsídios
-    const total_subsidios = subsidiosAplicados.reduce(
-      (acc, s) => acc + parseFloat(s.valor || 0),
-      0
-    );
+    // =========================
+    // 🔥 SUBSÍDIOS
+    // =========================
+    let total_subsidios = 0;
 
-    // 🔹 Somar descontos
-    const total_descontos = descontosAplicados.reduce(
-      (acc, d) => acc + parseFloat(d.valor || 0),
-      0
-    );
+    for (const id of subsidiosAplicados) {
+      const percent = await PercentagemSubsidio.findOne({
+        where: { SubsidioId: id }
+      });
 
-    // 🔹 Calcular salário líquido
-    const salario_liquido = salario_base + total_subsidios - total_descontos;
+      if (percent) {
+        total_subsidios += salario_base * (percent.percentagem / 100);
+      }
+    }
+
+    // =========================
+    // 🔥 DESCONTOS
+    // =========================
+    let total_descontos = 0;
+
+    const descMap = {}; // 🔥 importante para dízimo
+
+    for (const id of descontosAplicados) {
+      const percent = await PercentagemDesconto.findOne({
+        where: { DescontoId: id }
+      });
+
+      if (percent) {
+        const valor = salario_base * (percent.percentagem / 100);
+        total_descontos += valor;
+
+        // 🔥 guardamos para usar no dízimo
+        descMap[id] = percent.percentagem;
+      }
+    }
+
+    // =========================
+    // 🔥 DÍZIMO AUTOMÁTICO
+    // =========================
+    console.log("📦 descontosAplicados:", descontosAplicados);
+
+    const tipoDizimo = await TipoContribuicao.findOne({
+      where: { nome: "Dízimos" }
+    });
+
+    for (const idDesconto of descontosAplicados) {
+      const desconto = await Descontos.findByPk(idDesconto);
+
+      // 👉 Pode usar nome OU ID (mais seguro usar nome)
+      if (desconto?.nome === "Retenção de Dízimos") {
+
+        const percent = descMap[idDesconto] || 0;
+        const valorDizimo = salario_base * (percent / 100);
+
+        console.log("🔥 DÍZIMO DETECTADO:", valorDizimo);
+
+        if (valorDizimo > 0) {
+          await Contribuicao.create({
+            valor: valorDizimo,
+            data: new Date(),
+            descricao: `Dízimo automático do salário de ${funcionario?.Membro?.nome}`,
+            MembroId: funcionario.Membro?.id || null,
+            TipoContribuicaoId: tipoDizimo?.id || null,
+            SedeId: req.usuario.SedeId || null,
+            FilhalId: req.usuario.FilhalId || null,
+          });
+        }
+      }
+    }
+
+    // =========================
+    // SALÁRIO FINAL
+    // =========================
+    const salario_liquido =
+      salario_base + total_subsidios - total_descontos;
 
     const { SedeId, FilhalId } = req.usuario;
 
-    // 🔹 Criar o registro do salário
     const salario = await Salarios.create({
       mes_ano,
       salario_base,
       total_subsidios,
+      total_descontos,
       salario_liquido,
       FuncionarioId,
       SedeId: SedeId || null,
       FilhalId: FilhalId || null
     });
 
-    // ----------------------------------------------------------
-    // 🔥 CRIAÇÃO AUTOMÁTICA DA DESPESA RELACIONADA AO SALÁRIO
-    // ----------------------------------------------------------
-
-    const nomeMembro = funcionario?.Membro?.nome || "Colaborador sem nome";
+    // =========================
+    // 🔥 DESPESA AUTOMÁTICA
+    // =========================
+    const nomeMembro = funcionario?.Membro?.nome || "Colaborador";
 
     await Despesa.create({
-      descricao: `Remuneração referente ao salário do membro ${nomeMembro} — ${salario_liquido.toFixed(2)} Kz`,
+      descricao: `Salário de ${nomeMembro} — ${salario_liquido.toFixed(2)} Kz`,
       valor: salario_liquido,
       data: new Date(),
       categoria: "Salário",
       tipo: "Fixa",
-      observacao: `Salário referente ao mês ${mes_ano}`,
+      observacao: `Mês ${mes_ano}`,
       SedeId: SedeId || null,
       FilhalId: FilhalId || null
     });
 
-    // ----------------------------------------------------------
-
-    res.status(201).json({
-      message: "✅ Salário gerado e despesa registrada com sucesso!",
+    return res.status(201).json({
+      message: "✅ Salário gerado com sucesso + dízimo automático!",
       salario
     });
 
   } catch (error) {
-    console.error("Erro ao gerar salário:", error);
-    res.status(500).json({ message: "❌ Erro interno ao gerar salário." });
+    console.error("❌ Erro ao gerar salário:", error);
+    return res.status(500).json({
+      message: "Erro interno ao gerar salário."
+    });
   }
 });
+
+
+
 
 
 router.get("/salarios/:id/detalhado", auth, async (req, res) => {
@@ -1493,14 +1697,41 @@ router.get("/salarios/:id/detalhado", auth, async (req, res) => {
       return res.status(404).json({ message: "Salário não encontrado." });
     }
 
-    // 🔥 Buscar todos subsídios e descontos disponíveis
-    const subsidios = await Subsidios.findAll({
-      where: { ativo: 1 }
+    // 🔥 SUBSÍDIOS COM PERCENTAGEM CORRIGIDA
+    const subsidiosRaw = await Subsidios.findAll({
+      where: { ativo: 1 },
+      include: [
+        {
+          model: PercentagemSubsidio,
+          required: false
+        }
+      ]
     });
 
+    const subsidios = subsidiosRaw.map((s) => {
+      const percentagem =
+        s.PercentagemSubsidios?.[0]?.percentagem || 0;
+
+      return {
+        id: s.id,
+        nome: s.nome,
+        valor: s.valor,
+        percentagem,
+        ativo: s.ativo
+      };
+    });
+
+    // 🔥 DESCONTOS
     const descontos = await Descontos.findAll({
       where: { ativo: 1 }
     });
+
+    // 🔍 DEBUG
+    console.log("===== DETALHADO =====");
+    subsidios.forEach((s) => {
+      console.log(`Subsidio ${s.nome} → ${s.percentagem}%`);
+    });
+    console.log("=====================");
 
     return res.json({
       salario,
@@ -1516,9 +1747,36 @@ router.get("/salarios/:id/detalhado", auth, async (req, res) => {
   }
 });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 router.put("/salarios/:id", auth, async (req, res) => {
   try {
     const { id } = req.params;
+
     const {
       FuncionarioId,
       mes_ano,
@@ -1532,41 +1790,126 @@ router.put("/salarios/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Salário não encontrado." });
     }
 
-    const funcionario = await Funcionarios.findByPk(FuncionarioId);
+    const funcionario = await Funcionarios.findByPk(FuncionarioId, {
+      include: [{ model: Membros, as: "Membro" }]
+    });
 
     if (!funcionario) {
       return res.status(404).json({ message: "Funcionário não encontrado." });
     }
 
-    const salario_base = parseFloat(funcionario.salario_base);
+    const salario_base = Number(funcionario.salario_base || 0);
 
-    const total_subsidios = subsidiosAplicados.reduce(
-      (acc, s) => acc + parseFloat(s.valor || 0),
-      0
-    );
+    // =========================
+    // SUBSÍDIOS
+    // =========================
+    const percentagensSubs = await PercentagemSubsidio.findAll({
+      where: { SubsidioId: subsidiosAplicados }
+    });
 
-    const total_descontos = descontosAplicados.reduce(
-      (acc, d) => acc + parseFloat(d.valor || 0),
-      0
-    );
+    const subMap = {};
+    percentagensSubs.forEach((p) => {
+      subMap[p.SubsidioId] = Number(p.percentagem || 0);
+    });
 
-    const salario_liquido = salario_base + total_subsidios - total_descontos;
+    let total_subsidios = 0;
+
+    subsidiosAplicados.forEach((id) => {
+      const percent = subMap[id] || 0;
+      total_subsidios += (salario_base * percent) / 100;
+    });
+
+    // =========================
+    // DESCONTOS
+    // =========================
+    const percentagensDesc = await PercentagemDesconto.findAll({
+      where: { DescontoId: descontosAplicados }
+    });
+
+    const descMap = {};
+    percentagensDesc.forEach((p) => {
+      descMap[p.DescontoId] = Number(p.percentagem || 0);
+    });
+
+    let total_descontos = 0;
+
+    descontosAplicados.forEach((id) => {
+      const percent = descMap[id] || 0;
+      total_descontos += (salario_base * percent) / 100;
+    });
+
+    // =========================
+    // 🔥 DÍZIMOS AUTOMÁTICOS (NOVO)
+    // =========================
+
+    const tipoDizimo = await TipoContribuicao.findOne({
+      where: { nome: "Dízimos" }
+    });
+
+    console.log("📦 descontosAplicados:", descontosAplicados);
+
+  for (const idDesconto of descontosAplicados) {
+  const desconto = await Descontos.findByPk(idDesconto);
+
+  if (desconto?.id === 4) {
+
+    const percent = descMap[idDesconto] || 0;
+    const valorDizimo = (salario_base * percent) / 100;
+
+    console.log("🔥 DÍZIMO DETECTADO:", valorDizimo);
+
+    await Contribuicao.create({
+      valor: valorDizimo,
+      data: new Date(),
+      descricao: `Dízimo automático do salário de ${funcionario?.Membro?.nome}`,
+      MembroId: funcionario.Membro.id,
+      TipoContribuicaoId: tipoDizimo?.id || null,
+      SedeId: req.usuario.SedeId || null,
+      FilhalId: req.usuario.FilhalId || null,
+    });
+  }
+}
+
+    // =========================
+    // SALÁRIO FINAL
+    // =========================
+    const salario_liquido =
+      salario_base + total_subsidios - total_descontos;
 
     await salario.update({
       FuncionarioId,
       mes_ano,
       salario_base,
       total_subsidios,
+      total_descontos,
       salario_liquido
     });
 
-    res.json({ message: "✅ Salário atualizado com sucesso!", salario });
+    return res.json({
+      message: "✅ Salário atualizado com sucesso + dízimo automático!",
+      salario
+    });
 
   } catch (error) {
     console.error("Erro ao atualizar salário:", error);
-    res.status(500).json({ message: "Erro interno ao atualizar salário." });
+    return res.status(500).json({
+      message: "Erro interno ao atualizar salário."
+    });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.delete("/salarios/:id", auth, async (req, res) => {
   try {
@@ -1605,48 +1948,67 @@ router.delete("/salarios/:id", auth, async (req, res) => {
 
 
 
-
-
+  
 
 router.post("/subsidios", auth, async (req, res) => {
-try {
-const { nome, valor, ativo } = req.body;
+  try {
+    const { nome, percentagem, ativo } = req.body;
 
+    console.log(req.body);
 
-console.log(req.body); // 🔹 Para depuração
+    // 🔹 Validação
+    if (!nome || percentagem === undefined) {
+      return res.status(400).json({
+        message: "Preencha todos os campos obrigatórios (Nome e Percentagem).",
+      });
+    }
 
-// 🔹 Validação
-if (!nome || !valor) {
-  return res.status(400).json({
-    message: "Preencha todos os campos obrigatórios (Nome e Valor).",
-  });
-}
+    // 🔹 Pegar hierarquia do usuário logado
+    const { SedeId, FilhalId } = req.usuario;
 
-// 🔹 Pegar hierarquia do usuário logado (Sede / Filhal)
-const { SedeId, FilhalId } = req.usuario;
+    // 🔹 Criar o Subsídio (SEM valor)
+    const novoSubsidio = await Subsidios.create({
+      nome,
+      ativo: ativo !== undefined ? ativo : true,
+      SedeId: SedeId || null,
+      FilhalId: FilhalId || null,
+    });
 
-// 🔹 Criar subsídio associado ao contexto
-const novoSubsidio = await Subsidios.create({
-  nome,
-  valor,
-  ativo: ativo !== undefined ? ativo : true,
-  SedeId: SedeId || null,
-  FilhalId: FilhalId || null,
+    // 🔹 Criar a Percentagem associada ao Subsídio
+    const novaPercentagem = await PercentagemSubsidio.create({
+      percentagem,
+      SubsidioId: novoSubsidio.id,
+    });
+
+    return res.status(201).json({
+      message: "✅ Subsídio com percentagem cadastrado com sucesso!",
+      subsidio: novoSubsidio,
+      percentagem: novaPercentagem,
+    });
+
+  } catch (error) {
+    console.error("Erro ao cadastrar subsídio:", error);
+
+    return res.status(500).json({
+      message: "❌ Erro interno ao cadastrar subsídio.",
+    });
+  }
 });
 
-return res.status(201).json({
-  message: "✅ Subsídio cadastrado com sucesso!",
-  subsidio: novoSubsidio,
-});
 
 
-} catch (error) {
-console.error("Erro ao cadastrar subsídio:", error);
-return res.status(500).json({
-message: "❌ Erro interno ao cadastrar subsídio.",
-});
-}
-});
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // 🔹 Rota para "eliminar" funcionário (SOFT DELETE - desativa)
@@ -1896,42 +2258,65 @@ router.get("/lista-funcionarios", auth, async (req, res) => {
 
 
 
-// 🔹 Rota para cadastrar novo desconto
+
+
+// 🔹 Rota para cadastrar novo desconto (COM PERCENTAGEM)
 router.post("/descontos", auth, async (req, res) => {
   try {
-    const { nome, valor, descricao, ativo } = req.body;
+    const { nome, percentagem, descricao, ativo } = req.body;
 
-    // 🔹 Validação
-    if (!nome || valor === undefined) {
+    console.log("📥 DESCONTO BODY:", req.body);
+
+    // 🔹 Validação correta
+    if (!nome || percentagem === undefined) {
       return res.status(400).json({
-        message: "Preencha todos os campos obrigatórios (Nome e Valor).",
+        message: "Preencha todos os campos obrigatórios (Nome e Percentagem).",
       });
     }
 
-    // 🔹 Pegar hierarquia do usuário logado (Sede / Filhal)
     const { SedeId, FilhalId } = req.usuario;
 
-    // 🔹 Criar desconto associado ao contexto
+    // 🔹 Criar desconto base
     const novoDesconto = await Descontos.create({
       nome,
-      valor,
       descricao: descricao || null,
       ativo: ativo !== undefined ? ativo : true,
       SedeId: SedeId || null,
       FilhalId: FilhalId || null,
     });
 
-    return res.status(201).json({
-      message: "✅ Desconto cadastrado com sucesso!",
-      desconto: novoDesconto,
+    // 🔥 Criar percentagem ligada ao desconto
+    const novaPercentagem = await PercentagemDesconto.create({
+      percentagem,
+      DescontoId: novoDesconto.id,
     });
+
+    console.log("========== DESCONTO CRIADO ==========");
+    console.log(`ID: ${novoDesconto.id} | ${nome} | ${percentagem}%`);
+    console.log("=====================================");
+
+    return res.status(201).json({
+      message: "✅ Desconto com percentagem cadastrado com sucesso!",
+      desconto: novoDesconto,
+      percentagem: novaPercentagem,
+    });
+
   } catch (error) {
-    console.error("Erro ao cadastrar desconto:", error);
+    console.error("❌ Erro ao cadastrar desconto:", error);
     return res.status(500).json({
-      message: "❌ Erro interno ao cadastrar desconto.",
+      message: "Erro interno ao cadastrar desconto.",
     });
   }
 });
+
+
+
+
+
+
+
+
+
 
 
 

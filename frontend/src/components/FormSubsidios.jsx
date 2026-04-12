@@ -1,3 +1,4 @@
+
 // src/pages/GestaoSubsidios.jsx
 import React, { useState } from "react";
 import {
@@ -22,7 +23,7 @@ import api from "../api/axiosConfig";
 
 export default function GestaoSubsidios() {
   const [nome, setNome] = useState("");
-  const [valor, setValor] = useState("");
+  const [percentagem, setPercentagem] = useState("");
   const [ativo, setAtivo] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState({ tipo: "", texto: "" });
@@ -54,18 +55,26 @@ export default function GestaoSubsidios() {
       setMensagem({ tipo: "", texto: "" });
 
       const token = localStorage.getItem("token");
+
       await api.post(
         "/subsidios",
-        { nome, valor, ativo },
+        { nome, percentagem, ativo },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setMensagem({ tipo: "success", texto: "Subsídio cadastrado com sucesso!" });
+      setMensagem({
+        tipo: "success",
+        texto: "Subsídio cadastrado com sucesso!",
+      });
+
       setNome("");
-      setValor("");
+      setPercentagem("");
       setAtivo(true);
     } catch (error) {
-      setMensagem({ tipo: "error", texto: "Erro ao cadastrar subsídio." });
+      setMensagem({
+        tipo: "error",
+        texto: "Erro ao cadastrar subsídio.",
+      });
     } finally {
       setSalvando(false);
     }
@@ -102,7 +111,7 @@ export default function GestaoSubsidios() {
                 "0 30px 80px rgba(0,60,200,0.18), inset 0 0 60px rgba(255,255,255,0.4)",
             }}
           >
-            {/* Header Luxuoso */}
+            {/* Header */}
             <Box
               sx={{
                 p: 4,
@@ -130,7 +139,7 @@ export default function GestaoSubsidios() {
                 Gestão de Subsídios
               </Typography>
               <Typography sx={{ opacity: 0.9, mt: 1 }}>
-                Cadastro premium de benefícios e subsídios salariais
+                Cadastro de subsídios por percentagem (%)
               </Typography>
             </Box>
 
@@ -146,10 +155,10 @@ export default function GestaoSubsidios() {
                 />
 
                 <TextField
-                  label="Valor (Kz)"
+                  label="Percentagem (%)"
                   type="number"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value)}
+                  value={percentagem}
+                  onChange={(e) => setPercentagem(e.target.value)}
                   fullWidth
                   required
                   sx={inputPremium}
@@ -206,7 +215,11 @@ export default function GestaoSubsidios() {
                     },
                   }}
                 >
-                  {salvando ? <CircularProgress size={26} color="inherit" /> : "Cadastrar Subsídio"}
+                  {salvando ? (
+                    <CircularProgress size={26} color="inherit" />
+                  ) : (
+                    "Cadastrar Subsídio"
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -216,3 +229,4 @@ export default function GestaoSubsidios() {
     </Fade>
   );
 }
+
