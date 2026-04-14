@@ -1,82 +1,141 @@
 // src/pages/RelatorioPresencasPremium.jsx
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem,
-  Button, CircularProgress, Divider, Table, TableBody, TableCell, TableHead, TableRow,
-  Avatar, Chip, Stack
+  Box, Typography, FormControl, InputLabel, Select, MenuItem,
+  Button, CircularProgress, Table, TableBody, TableCell, TableHead,
+  TableRow, Avatar, Stack, Chip, Paper, TableContainer,
+  TextField
 } from '@mui/material';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
 import api from '../../api/axiosConfig';
-import { Person, MonetizationOn, CalendarToday, Group, PictureAsPdf } from '@mui/icons-material';
+import { PictureAsPdf, TrendingUp } from '@mui/icons-material';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function RelatorioPresencasPremium() {
+
   const [tiposCulto, setTiposCulto] = useState([]);
   const [selectedTipoCulto, setSelectedTipoCulto] = useState('');
-  const [nomeTipoCulto, setNomeTipoCulto] = useState('');
-  const [periodo, setPeriodo] = useState('mes');
+  const [periodo, setPeriodo] = useState('todos');
   const [loading, setLoading] = useState(false);
+
+  const [dataInicial, setDataInicial] = useState(
+    dayjs().startOf('month').format('YYYY-MM-DD')
+  );
+
+  const [dataFinal, setDataFinal] = useState(
+    dayjs().format('YYYY-MM-DD')
+  );
+
   const [totais, setTotais] = useState({
-    totalPresentes: 0,
     homens: 0,
     mulheres: 0,
-    adultos: 0,
-    criancas: 0
+    criancas: 0,
+    adultos: 0
   });
-  const [dataCulto, setDataCulto] = useState('');
+
   const [contribuicoes, setContribuicoes] = useState([]);
-  const [totaisContribuicoes, setTotaisContribuicoes] = useState({});
-  const [totalGeralContribuicoes, setTotalGeralContribuicoes] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get('/lista/tipos-culto');
-        setTiposCulto(res.data);
-      } catch (err) {
-        console.error('Erro ao carregar tipos de culto', err);
-      }
-    })();
+    api.get('/lista/tipos-culto').then(res => setTiposCulto(res.data));
   }, []);
 
   const calcularPeriodo = (p) => {
     const agora = dayjs();
-    let start;
-    switch (p) {
-      case 'hoje': start = agora.startOf('day'); break;
-      case 'semana': start = agora.startOf('week'); break;
-      case 'mes': start = agora.startOf('month'); break;
-      case 'trimestre': start = agora.subtract(3, 'month').startOf('month'); break;
-      case 'semestre': start = agora.subtract(6, 'month').startOf('month'); break;
-      case 'ano': start = agora.startOf('year'); break;
-      default: start = agora.startOf('month');
+    let inicio;
+
+    if (p === 'todos') {
+      return {
+        start: null,
+        end: null
+      };
     }
-    return { start: start.format('YYYY-MM-DD'), end: agora.format('YYYY-MM-DD') };
+
+    if (p === 'personalizado') {
+      return {
+        start: dataInicial,
+        end: dataFinal
+      };
+    }
+
+    switch (p) {
+      case 'hoje':
+        inicio = agora.startOf('day');
+        break;
+      case 'semana':
+        inicio = agora.startOf('week');
+        break;
+      case 'mes':
+        inicio = agora.startOf('month');
+        break;
+      case 'trimestre':
+        inicio = agora.subtract(3, 'month').startOf('day');
+        break;
+      case 'semestre':
+        inicio = agora.subtract(6, 'month').startOf('day');
+        break;
+      case 'ano':
+        inicio = agora.startOf('year');
+        break;
+      default:
+        inicio = null;
+    }
+
+    return {
+      start: inicio ? inicio.format('YYYY-MM-DD') : null,
+      end: agora.format('YYYY-MM-DD')
+    };
   };
 
   const gerarRelatorio = async () => {
     if (!selectedTipoCulto) return;
+
     setLoading(true);
-    try {
-      const { start, end } = calcularPeriodo(periodo);
-      const res = await api.get('/lista/presencas', {
-        params: { tipoCultoId: selectedTipoCulto, startDate: start, endDate: end }
-      });
-      setTotais(res.data.totais);
-      setDataCulto(res.data.cultos.length ? dayjs(res.data.cultos[0].dataHora).format('DD/MM/YYYY HH:mm') : '');
-      setContribuicoes(res.data.contribuicoes || []);
-      setTotaisContribuicoes(res.data.totaisContribuicoes || {});
-      setTotalGeralContribuicoes(res.data.totalGeralContribuicoes || 0);
-      setNomeTipoCulto(res.data.tipoCultoNome || '');
-    } catch (err) {
-      console.error('Erro ao buscar presenças e contribuições', err);
-    } finally {
-      setLoading(false);
-    }
+
+    const { start, end } = calcularPeriodo(periodo);
+
+    const res = await api.get('/lista/presencas', {
+      params: {
+        tipoCultoId: selectedTipoCulto,
+        startDate: start,
+        endDate: end
+      }
+    });
+
+    setTotais(res.data.totais);
+    setContribuicoes(res.data.contribuicoes || []);
+
+    setLoading(false);
   };
+
+  const totaisLimpos = useMemo(() => {
+    const { adultos, ...resto } = totais;
+    return resto;
+  }, [totais]);
+
+  const totaisPorTipo = useMemo(() => {
+    const map = {};
+
+    contribuicoes.forEach(c => {
+      const tipo = c.TipoContribuicao?.nome || 'Outro';
+      map[tipo] = (map[tipo] || 0) + Number(c.valor || 0);
+    });
+
+    return Object.entries(map).map(([tipo, valor]) => ({
+      tipo,
+      valor
+    }));
+  }, [contribuicoes]);
+
+  // ✅ NOVO TOTAL GERAL
+  const totalGeralContribuicoes = useMemo(() => {
+    return contribuicoes.reduce((total, c) => {
+      return total + Number(c.valor || 0);
+    }, 0);
+  }, [contribuicoes]);
 
   const dadosPizza = useMemo(() => [
     { name: 'Homens', value: totais.homens },
@@ -84,222 +143,234 @@ export default function RelatorioPresencasPremium() {
     { name: 'Crianças', value: totais.criancas }
   ], [totais]);
 
-  const cores = ['#66b2ff', '#3399FF', '#b3d9ff'];
+  const cores = ['#6366f1', '#ec4899', '#22c55e'];
 
   const exportarPDF = () => {
-    if (!selectedTipoCulto) return;
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Relatório de Presenças e Contribuições', 14, 18);
-    if (nomeTipoCulto) doc.setFontSize(12).text(`Tipo de Culto: ${nomeTipoCulto}`, 14, 26);
-    if (dataCulto) doc.setFontSize(12).text(`Data do Culto: ${dataCulto}`, 14, 34);
 
-    const totaisArray = [
-      ['Total Presentes', totais.totalPresentes],
-      ['Homens', totais.homens],
-      ['Mulheres', totais.mulheres],
-      ['Adultos', totais.adultos],
-      ['Crianças', totais.criancas],
-    ];
+    const dadosFiltrados = Object.entries(totaisLimpos).map(([k, v]) => [
+      k.toUpperCase(),
+      v
+    ]);
 
-    autoTable(doc, { startY: 38, head: [['Categoria', 'Quantidade']], body: totaisArray, styles: { fontSize: 10 } });
+    autoTable(doc, {
+      head: [['Categoria', 'Valor']],
+      body: dadosFiltrados
+    });
 
-    if (Object.keys(totaisContribuicoes).length) {
-      const contribArray = Object.entries(totaisContribuicoes).map(([tipo, valor]) => [tipo, `Kz ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
-      autoTable(doc, { startY: doc.lastAutoTable.finalY + 10, head: [['Tipo de Contribuição', 'Valor Total']], body: contribArray, styles: { fontSize: 10 } });
-      autoTable(doc, { startY: doc.lastAutoTable.finalY + 6, head: [['Total Geral de Contribuições', `Kz ${totalGeralContribuicoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]], body: [], styles: { fontSize: 10, halign: 'right' }, theme: 'plain' });
-    }
-
-    if (contribuicoes.length) {
-      const rows = contribuicoes.map(c => [
-        dayjs(c.data).format('DD/MM/YYYY'),
-        c.Membro?.nome || '-',
-        c.TipoContribuicao?.nome || '-',
-        parseFloat(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-        c.descricao || '-'
-      ]);
-      autoTable(doc, { startY: doc.lastAutoTable.finalY + 10, head: [['Data', 'Membro', 'Tipo', 'Valor (Kz)', 'Descrição']], body: rows, styles: { fontSize: 10 } });
-    }
-    doc.save(`Relatorio_TipoCulto_${selectedTipoCulto || 'SemNome'}.pdf`);
+    doc.save('relatorio.pdf');
   };
+
+  const cardStyle = {
+    backdropFilter: 'blur(14px)',
+    background: 'rgba(255,255,255,0.75)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.08)',
+    borderRadius: 4,
+    p: 2.5,
+    flex: 1,
+    minWidth: 0
+  };
+
+  const MoneyChip = ({ value }) => (
+    <Chip
+      label={`${value} Kz`}
+      sx={{
+        background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+        color: '#fff',
+        fontWeight: 800,
+        boxShadow: '0 6px 16px rgba(34,197,94,0.35)'
+      }}
+    />
+  );
 
   return (
     <Box sx={{
       minHeight: '100vh',
-      p: { xs: 2, md: 6 },
-      background: 'linear-gradient(to bottom, #1e3c72, #2a5298)',
-      display: 'flex',
-      justifyContent: 'center'
+      background: 'linear-gradient(135deg, #eef2ff, #f0fdfa, #fef3c7)',
+      p: { xs: 2, md: 4 }
     }}>
-      <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} style={{ width: '100%', maxWidth: 1100 }}>
-        <Card elevation={25} sx={{
-          borderRadius: 5,
-          overflow: 'hidden',
-          backdropFilter: 'blur(14px)',
-          backgroundColor: 'rgba(255,255,255,0.07)',
-          border: '1px solid rgba(255,255,255,0.15)'
-        }}>
-          <Box sx={{ p: 4, background: 'linear-gradient(135deg,#3399FF,#66b2ff)' }}>
-            <Typography variant="h4" fontWeight="bold" color="white" textAlign="center" sx={{ textShadow: '3px 3px 12px rgba(0,0,0,0.5)' }}>
-              <MonetizationOn sx={{ mr: 1 }} /> Relatório Premium de Presenças & Contribuições
-            </Typography>
-          </Box>
-          <CardContent>
-            {/* Filtros */}
-            <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
-              <FormControl sx={{ minWidth: 220, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-                <InputLabel sx={{ color: 'white' }}>Tipo de Culto</InputLabel>
-                <Select value={selectedTipoCulto} onChange={(e) => setSelectedTipoCulto(e.target.value)} sx={{ color: 'white' }}>
-                  <MenuItem value="">-- Selecione --</MenuItem>
-                  {tiposCulto.map(c => <MenuItem key={c.id} value={c.id}>{c.nome}</MenuItem>)}
-                </Select>
-              </FormControl>
 
-              <FormControl sx={{ minWidth: 160, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-                <InputLabel sx={{ color: 'white' }}>Período</InputLabel>
-                <Select value={periodo} onChange={(e) => setPeriodo(e.target.value)} sx={{ color: 'white' }}>
-                  <MenuItem value="hoje">Hoje</MenuItem>
-                  <MenuItem value="semana">Semana</MenuItem>
-                  <MenuItem value="mes">Mês</MenuItem>
-                  <MenuItem value="trimestre">Trimestre</MenuItem>
-                  <MenuItem value="semestre">Semestre</MenuItem>
-                  <MenuItem value="ano">Ano</MenuItem>
-                </Select>
-              </FormControl>
+      {/* HEADER */}
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        mb={3}
+        spacing={2}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={900}>
+            Relatório de cultos
+          </Typography>
+        </Box>
 
-              <Button variant="contained" onClick={gerarRelatorio} sx={{
-                background: 'linear-gradient(90deg,#66b2ff,#3399FF)',
-                color: 'white',
-                fontWeight: 'bold',
-                px: 5,
-                py: 1.8,
-                borderRadius: 3,
-                boxShadow: '0 12px 25px rgba(0,0,0,0.35)',
-                transition: '0.4s',
-                '&:hover': { transform: 'scale(1.05)', boxShadow: '0 18px 35px rgba(0,0,0,0.45)' }
-              }}>
-                Gerar Relatório
-              </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="contained"
+            onClick={gerarRelatorio}
+            startIcon={<TrendingUp />}
+          >
+            Gerar Relatório
+          </Button>
 
-              <Button
-                variant="outlined"
-                startIcon={<PictureAsPdf />}
-                onClick={exportarPDF}
-                disabled={!selectedTipoCulto || (!contribuicoes.length && Object.keys(totaisContribuicoes).length === 0)}
-                sx={{
-                  borderColor: '#66b2ff',
-                  color: '#66b2ff',
-                  fontWeight: 'bold',
-                  px: 4,
-                  '&:hover': { background: 'rgba(102,178,255,0.15)', borderColor: '#3399FF' }
-                }}
-              >
-                Exportar PDF
-              </Button>
-            </Box>
+          <Button
+            variant="outlined"
+            onClick={exportarPDF}
+            startIcon={<PictureAsPdf />}
+          >
+            Exportar
+          </Button>
+        </Stack>
+      </Stack>
 
-            {loading && <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress size={60} color="secondary" /></Box>}
+      {/* FILTROS */}
+      <Stack direction="row" spacing={2} mb={4} flexWrap="wrap">
 
-            {!loading && selectedTipoCulto && (
-              <>
-                {nomeTipoCulto && (
-                  <Typography variant="h5" fontWeight="bold" textAlign="center" mb={4} color="#b3d9ff" sx={{ textShadow: '2px 2px 8px rgba(0,0,0,0.4)' }}>
-                    Tipo de Culto: {nomeTipoCulto}
-                  </Typography>
-                )}
+        <FormControl sx={{ minWidth: 220 }}>
+          <InputLabel>Tipo de Culto</InputLabel>
+          <Select value={selectedTipoCulto} onChange={(e) => setSelectedTipoCulto(e.target.value)}>
+            {tiposCulto.map(c => (
+              <MenuItem key={c.id} value={c.id}>{c.nome}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-                {/* Resumo Presenças */}
-                <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 300 }}>
-                  <Box sx={{ mb: 4, p: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 5, boxShadow: '0 18px 40px rgba(0,0,0,0.25)' }}>
-                    <Typography variant="h5" fontWeight="bold" textAlign="center" mb={3} color="#fff">
-                      <CalendarToday sx={{ mr: 1 }} /> Resumo Estatístico
-                    </Typography>
-                    {dataCulto && <Typography variant="body1" textAlign="center" mb={3} color="#fff">Data do Culto: {dataCulto}</Typography>}
-                    <Divider sx={{ mb: 3, backgroundColor: '#66b2ff' }} />
-                    <Stack direction="row" spacing={2} justifyContent="space-around" flexWrap="wrap">
-                      <Chip icon={<Group />} label={`Total: ${totais.totalPresentes}`} color="primary" variant="filled" sx={{ fontWeight: 'bold', px:2 }}/>
-                      <Chip icon={<Person />} label={`Homens: ${totais.homens}`} color="info" variant="filled" sx={{ fontWeight: 'bold', px:2 }}/>
-                      <Chip icon={<Person />} label={`Mulheres: ${totais.mulheres}`} color="secondary" variant="filled" sx={{ fontWeight: 'bold', px:2 }}/>
-                      <Chip icon={<Person />} label={`Adultos: ${totais.adultos}`} color="success" variant="filled" sx={{ fontWeight: 'bold', px:2 }}/>
-                      <Chip icon={<Person />} label={`Crianças: ${totais.criancas}`} color="warning" variant="filled" sx={{ fontWeight: 'bold', px:2 }}/>
-                    </Stack>
-                  </Box>
-                </motion.div>
+        <FormControl sx={{ minWidth: 160 }}>
+          <InputLabel>Período</InputLabel>
+          <Select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
+            <MenuItem value="todos">Todos</MenuItem>
+            <MenuItem value="hoje">Hoje</MenuItem>
+            <MenuItem value="semana">Semana</MenuItem>
+            <MenuItem value="mes">Mês</MenuItem>
+            <MenuItem value="trimestre">Trimestre</MenuItem>
+            <MenuItem value="semestre">Semestre</MenuItem>
+            <MenuItem value="ano">Ano</MenuItem>
+            <MenuItem value="personalizado">Personalizado</MenuItem>
+          </Select>
+        </FormControl>
 
-                {/* Gráfico Pizza */}
-                <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 300 }}>
-                  <Box sx={{ height: 420, background: 'rgba(255,255,255,0.07)', borderRadius: 5, p: 3, boxShadow: '0 18px 40px rgba(0,0,0,0.25)', mb: 4 }}>
-                    <Typography variant="h6" textAlign="center" mb={2} fontWeight="bold" color="#fff">
-                      Distribuição por Categoria
-                    </Typography>
-                    <ResponsiveContainer width="100%" height="90%">
-                      <PieChart>
-                        <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={140} label={({ name, percent }) => `${name}: ${(percent*100).toFixed(0)}%`}>
-                          {dadosPizza.map((_, i) => <Cell key={i} fill={cores[i % cores.length]} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#1e1e2f', borderRadius: 8, border: 'none', color:'#fff' }}/>
-                        <Legend verticalAlign="bottom" align="center" wrapperStyle={{ color: '#fff' }}/>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </motion.div>
+        {periodo === 'personalizado' && (
+          <>
+            <TextField
+              type="date"
+              label="Data Inicial"
+              value={dataInicial}
+              onChange={(e) => setDataInicial(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
 
-                {/* Contribuições */}
-                <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 300 }}>
-                  <Box sx={{ mb: 4, p: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 5, boxShadow: '0 18px 40px rgba(0,0,0,0.25)' }}>
-                    <Typography variant="h5" fontWeight="bold" textAlign="center" mb={3} color="#66b2ff">
-                      <MonetizationOn sx={{ mr: 1 }} /> Contribuições
-                    </Typography>
+            <TextField
+              type="date"
+              label="Data Final"
+              value={dataFinal}
+              onChange={(e) => setDataFinal(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </>
+        )}
+      </Stack>
 
-                    {Object.keys(totaisContribuicoes).length > 0 && (
-                      <>
-                        <Stack direction="row" spacing={2} justifyContent="space-around" flexWrap="wrap" mb={3}>
-                          {Object.entries(totaisContribuicoes).map(([tipo, valor]) => (
-                            <Chip key={tipo} label={`${tipo}: Kz ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} color="secondary" variant="filled" sx={{ fontWeight:'bold', px:2, '&:hover': { transform:'scale(1.1)', boxShadow:'0 6px 18px rgba(0,0,0,0.35)' } }} />
-                          ))}
-                        </Stack>
-                        <Typography variant="subtitle1" fontWeight="bold" textAlign="center" mb={3} color="#fff">
-                          Total Geral: Kz {totalGeralContribuicoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </Typography>
-                      </>
-                    )}
+      {loading && <CircularProgress />}
 
-                    {contribuicoes.length > 0 && (
-                      <Table sx={{ borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
-                        <TableHead sx={{ background: 'linear-gradient(135deg,#3399FF,#66b2ff)' }}>
-                          <TableRow>
-                            <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Data</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Membro</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Tipo</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Valor (Kz)</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Descrição</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {contribuicoes.map((c) => (
-                            <TableRow key={c.id} sx={{ '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)', transform: 'scale(1.02)', transition: '0.3s' } }}>
-                              <TableCell>{dayjs(c.data).format('DD/MM/YYYY')}</TableCell>
-                              <TableCell>
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                  <Avatar sx={{ bgcolor: '#3399FF' }}>{c.Membro?.nome?.charAt(0)}</Avatar>
-                                  <Typography>{c.Membro?.nome || '-'}</Typography>
-                                </Stack>
-                              </TableCell>
-                              <TableCell>{c.TipoContribuicao?.nome || '-'}</TableCell>
-                              <TableCell>Kz {parseFloat(c.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell>{c.descricao || '-'}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </Box>
-                </motion.div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+      {!loading && (
+        <>
+          {/* KPI CARDS */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap" mb={3}>
+            {Object.entries(totaisLimpos).map(([k, v]) => (
+              <Box key={k} sx={cardStyle}>
+                <Typography fontSize={12} color="text.secondary">
+                  {k.toUpperCase()}
+                </Typography>
+                <Typography fontSize={28} fontWeight={900}>
+                  {v}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+
+          {/* CONTRIBUTIONS */}
+          <Typography fontWeight={800} mb={1}>
+            Contribuições por Tipo
+          </Typography>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap" mb={4}>
+
+            {/* ✅ TOTAL GERAL */}
+            <Paper sx={{
+              ...cardStyle,
+              background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+              color: '#fff'
+            }}>
+              <Typography fontSize={12} sx={{ opacity: 0.9 }}>
+                TOTAL GERAL
+              </Typography>
+              <Typography fontSize={26} fontWeight={900}>
+                {totalGeralContribuicoes} Kz
+              </Typography>
+            </Paper>
+
+            {totaisPorTipo.map((t) => (
+              <Paper key={t.tipo} sx={cardStyle}>
+                <Typography fontSize={12}>{t.tipo}</Typography>
+                <MoneyChip value={t.valor} />
+              </Paper>
+            ))}
+
+          </Stack>
+
+          {/* GRID */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+
+            <Paper sx={cardStyle}>
+              <Typography fontWeight={700}>Distribuição</Typography>
+
+              <Box height={320}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={dadosPizza} dataKey="value" outerRadius={110} innerRadius={60}>
+                      {dadosPizza.map((_, i) => (
+                        <Cell key={i} fill={cores[i]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </Paper>
+
+            <Paper sx={{ ...cardStyle, flex: 2 }}>
+              <Typography fontWeight={700}>Contribuições Recentes</Typography>
+
+              <TableContainer sx={{ maxHeight: 400 }}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Data</TableCell>
+                      <TableCell>Membro</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Valor</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {contribuicoes.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell>{dayjs(c.data).format('DD/MM/YYYY')}</TableCell>
+                        <TableCell>{c.Membro?.nome}</TableCell>
+                        <TableCell>{c.TipoContribuicao?.nome}</TableCell>
+                        <TableCell><MoneyChip value={c.valor} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+
+          </Stack>
+        </>
+      )}
     </Box>
   );
 }

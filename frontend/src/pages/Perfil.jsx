@@ -1,333 +1,357 @@
-// pages/Perfil.jsx
 import React, { useEffect, useState } from 'react';
 import {
-  Container,
-  Typography,
   Box,
+  Typography,
   Avatar,
-  Grid,
   Paper,
   CircularProgress,
-  Divider,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
   Snackbar,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Stack,
   InputAdornment,
   IconButton,
   OutlinedInput,
+  FormControl,
+  InputLabel,
+  Chip,
+  Divider
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
+
+import { motion } from 'framer-motion';
+
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import EditIcon from '@mui/icons-material/Edit';
 import api from '../api/axiosConfig';
-import GestaoUsuarios from '../components/gestaoUsuarios';
+
+const MotionBox = motion(Box);
+const MotionPaper = motion(Paper);
 
 export default function Perfil() {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openFormModal, setOpenFormModal] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const [formUsuario, setFormUsuario] = useState({
     nome: '',
     senha: '',
-    funcao: 'usuario',
   });
 
   const [showPassword, setShowPassword] = useState(false);
 
-  // Busca dados do perfil
   const fetchPerfil = async () => {
     try {
       const res = await api.get('/meu-perfil');
       setUsuario(res.data.usuario);
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Verifica função do usuário
-  const checkUsuarioStatus = async () => {
-    try {
-      const res = await api.get('/usuario/status');
-      setIsAdmin(res.data.usuario.funcao === 'admin');
-    } catch (error) {
-      console.error('Erro ao verificar status do usuário:', error);
-      setIsAdmin(false);
-    }
-  };
-
   useEffect(() => {
     fetchPerfil();
-    checkUsuarioStatus();
   }, []);
 
-  const handleOpenModal = (edit = false) => {
-    if (edit && usuario) {
-      setFormUsuario({ nome: usuario.nome, senha: '', funcao: usuario.funcao });
-      setIsEditMode(true);
-    } else {
-      setFormUsuario({ nome: '', senha: '', funcao: 'usuario' });
-      setIsEditMode(false);
-    }
-    setOpenFormModal(true);
+  const handleOpen = () => {
+    setFormUsuario({
+      nome: usuario.nome,
+      senha: '',
+    });
+    setOpenModal(true);
   };
 
-  const handleCloseModal = () => setOpenFormModal(false);
-
-  const handleChange = (e) => setFormUsuario({ ...formUsuario, [e.target.name]: e.target.value });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
-      if (isEditMode) {
-        await api.put('/meu-perfil', formUsuario);
-        setSnackbar({ open: true, message: 'Perfil atualizado com sucesso!', severity: 'success' });
-      } else {
-        await api.post('/novo-usuarios', formUsuario);
-        setSnackbar({ open: true, message: 'Usuário criado com sucesso!', severity: 'success' });
-      }
-      setOpenFormModal(false);
+      await api.put('/meu-perfil', formUsuario);
+
+      setSnackbar({
+        open: true,
+        message: 'Perfil atualizado com sucesso!',
+        severity: 'success'
+      });
+
+      setOpenModal(false);
       fetchPerfil();
     } catch (error) {
-      console.error('Erro:', error);
-      setSnackbar({ open: true, message: 'Erro ao salvar os dados.', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: 'Erro ao atualizar perfil',
+        severity: 'error'
+      });
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
-        <CircularProgress size={70} />
+      <Box sx={styles.center}>
+        <CircularProgress />
       </Box>
     );
   }
 
   if (!usuario) {
     return (
-      <Typography align="center" color="error" sx={{ mt: 10, fontSize: '1.2rem' }}>
-        Não foi possível carregar os dados do perfil.
+      <Typography align="center" color="error" sx={{ mt: 10 }}>
+        Erro ao carregar perfil
       </Typography>
     );
   }
 
+  const membro = usuario.membro;
+
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        py: 8,
-        px: 2,
-        background: 'linear-gradient(to bottom right, #6b78ff, #ffffff)',
-      }}
-    >
-      <Container maxWidth="md">
-        <Typography
-          variant="h3"
-          gutterBottom
-          color="primary"
-          fontWeight="bold"
-          align="center"
-          sx={{
-            mb: 6,
-            textShadow: '2px 2px 8px rgba(0,0,0,0.2)',
-          }}
-        >
-          Meu Perfil
-        </Typography>
+    <Box sx={styles.page}>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-          {isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenModal(false)}
-              sx={{
-                mr: 2,
-                background: 'linear-gradient(to right, #6a11cb, #2575fc)',
-                color: 'white',
-                px: 3,
-                py: 1.5,
-                borderRadius: 3,
-                fontWeight: 'bold',
-                boxShadow: '0 8px 25px rgba(0,0,0,0.3)',
-                '&:hover': {
-                  transform: 'scale(1.05)',
-                  boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
-                },
-              }}
-            >
-              + Novo Usuário
-            </Button>
-          )}
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={() => handleOpenModal(true)}
-            sx={{
-              px: 3,
-              py: 1.5,
-              borderRadius: 3,
-              fontWeight: 'bold',
-              borderColor: '#6b78ff',
-              color: '#6b78ff',
-              '&:hover': {
-                borderColor: '#2575fc',
-                backgroundColor: 'rgba(101,116,255,0.1)',
-              },
-            }}
-          >
-            Editar Perfil
-          </Button>
-        </Box>
+      <Box sx={styles.bgGlow} />
 
-        <Paper
-          sx={{
-            p: 5,
-            borderRadius: 4,
-            boxShadow: '0 15px 40px rgba(0,0,0,0.2)',
-            transition: 'transform 0.3s',
-            '&:hover': { transform: 'translateY(-5px)' },
-          }}
-        >
-          <Grid container spacing={5} alignItems="center">
-            <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
-              <Avatar
-                src={usuario.foto || ''}
-                alt={usuario.nome}
-                sx={{
-                  width: 170,
-                  height: 170,
-                  mx: 'auto',
-                  mb: 3,
-                  border: '5px solid',
-                  borderImage: 'linear-gradient(to right, #6a11cb, #2575fc) 1',
-                }}
-              />
-              <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
-                {usuario.nome}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                {usuario.funcao.toUpperCase()}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={8}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(255,255,255,0.9)',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.1)',
-                }}
-              >
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                    Sede:
-                  </Typography>
-                  <Typography variant="body1">{usuario.Sede ? usuario.Sede.nome : 'N/D'}</Typography>
-                </Box>
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                    Filhal:
-                  </Typography>
-                  <Typography variant="body1">{usuario.Filhal ? usuario.Filhal.nome : 'N/D'}</Typography>
-                </Box>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Paper>
+      <MotionPaper sx={styles.header} />
 
-        {/* Modal de edição/criação */}
-        <Dialog open={openFormModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ fontWeight: 'bold', background: '#6b78ff', color: 'white' }}>
-            {isEditMode ? 'Editar Perfil' : 'Cadastrar Novo Usuário'}
-          </DialogTitle>
-          <DialogContent dividers>
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-              <TextField
-                fullWidth
-                label="Nome"
-                name="nome"
-                value={formUsuario.nome}
-                onChange={handleChange}
-                margin="normal"
-                required
-              />
-              <FormControl fullWidth margin="normal" variant="outlined">
-                <InputLabel htmlFor="senha">Senha</InputLabel>
-                <OutlinedInput
-                  id="senha"
-                  type={showPassword ? 'text' : 'password'}
-                  name="senha"
-                  value={formUsuario.senha}
-                  onChange={handleChange}
-                  placeholder={isEditMode ? 'Preencha somente se quiser alterar a senha' : ''}
-                  required={!isEditMode}
-                  endAdornment={
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  }
-                  label="Senha"
+      <MotionPaper sx={styles.profileCard}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center">
+
+          <Avatar
+            src={membro?.foto || usuario.foto || ''}
+            sx={styles.avatar}
+          />
+
+          <Box flex={1}>
+            <Typography variant="h4" fontWeight={900}>
+              {usuario.nome}
+            </Typography>
+
+            <Typography color="text.secondary">
+              {membro?.email}
+            </Typography>
+
+            <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
+              {(membro?.cargos || []).map((cargo) => (
+                <Chip
+                  key={cargo.id}
+                  label={cargo.nome}
+                  sx={styles.chip}
                 />
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="funcao-label">Função</InputLabel>
-                <Select
-                  labelId="funcao-label"
-                  name="funcao"
-                  value={formUsuario.funcao}
-                  onChange={handleChange}
-                  label="Função"
-                >
-                  <MenuItem value="usuario">Usuário</MenuItem>
-                  <MenuItem value="moderador">Moderador</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModal} color="inherit">
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} variant="contained">
-              {isEditMode ? 'Salvar Alterações' : 'Cadastrar'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+              ))}
+            </Stack>
+          </Box>
 
-        {/* Snackbar */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={handleOpen}
+            sx={styles.button}
+          >
+            Editar
+          </Button>
+        </Stack>
+      </MotionPaper>
 
-        {/* Componente de Gestão de Usuários somente se for admin */}
-        {isAdmin && <GestaoUsuarios />}
-      </Container>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mt={4}>
+        <StatCard title="Perfil Completo" value="98%" />
+        <StatCard title="Atividade" value="Alta" />
+        <StatCard title="Segurança" value="Protegido" />
+      </Stack>
+
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} mt={3}>
+
+        <InfoCard title="Contactos">
+          <Info label="Telefone" value={membro?.telefone || 'N/D'} />
+          <Divider sx={{ my: 2 }} />
+          <Info label="Email" value={membro?.email || 'N/D'} />
+        </InfoCard>
+
+        <InfoCard title="Organização">
+          <Info label="Sede" value={usuario.Sede?.nome || 'N/D'} />
+          <Divider sx={{ my: 2 }} />
+          <Info label="Filial" value={usuario.Filhal?.nome || 'N/D'} />
+        </InfoCard>
+
+        <InfoCard title="Segurança">
+          <Typography color="text.secondary">
+            A tua conta está protegida com nível elevado de segurança.
+            A sua senha está bem protejida e incriptografada. Se desejar mudá-la use a ediçao de perfil.
+          </Typography>
+        </InfoCard>
+      </Stack>
+
+      <Dialog open={openModal} onClose={() => setOpenModal(false)} fullWidth maxWidth="sm">
+        <DialogContent>
+          <Stack spacing={3} mt={1}>
+            <TextField
+              label="Nome"
+              value={formUsuario.nome}
+              onChange={(e) => setFormUsuario({ ...formUsuario, nome: e.target.value })}
+              fullWidth
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Senha</InputLabel>
+              <OutlinedInput
+                type={showPassword ? 'text' : 'password'}
+                value={formUsuario.senha}
+                onChange={(e) => setFormUsuario({ ...formUsuario, senha: e.target.value })}
+                endAdornment={
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                }
+              />
+            </FormControl>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSubmit}>
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert severity={snackbar.severity}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
+
+/* ---------- COMPONENTES ---------- */
+
+function Info({ label, value }) {
+  return (
+    <Box>
+      <Typography fontSize={12} color="text.secondary">
+        {label}
+      </Typography>
+      <Typography fontWeight={700}>{value}</Typography>
+    </Box>
+  );
+}
+
+function InfoCard({ title, children }) {
+  return (
+    <Paper sx={styles.card}>
+      <Typography fontWeight={900} mb={2}>
+        {title}
+      </Typography>
+      {children}
+    </Paper>
+  );
+}
+
+function StatCard({ title, value }) {
+  return (
+    <MotionPaper whileHover={{ scale: 1.03 }} sx={styles.statCard}>
+      <Typography fontSize={12} color="text.secondary">
+        {title}
+      </Typography>
+      <Typography fontSize={26} fontWeight={900}>
+        {value}
+      </Typography>
+    </MotionPaper>
+  );
+}
+
+/* ---------- STYLES ---------- */
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    p: 4,
+    background: 'radial-gradient(circle at top, #eef2ff, #f8fafc)'
+  },
+
+  bgGlow: {
+    position: 'absolute',
+    width: 500,
+    height: 500,
+    background: 'radial-gradient(circle, rgba(59,130,246,0.25), transparent)', // 🔵 só azul
+    filter: 'blur(100px)',
+    top: -100,
+    right: -100,
+    zIndex: 0
+  },
+
+  center: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '70vh'
+  },
+
+  header: {
+    height: 220,
+    borderRadius: 6,
+    background: 'linear-gradient(135deg,#6366f1,#3b82f6)', // 🔵 removido verde
+    boxShadow: '0 25px 60px rgba(0,0,0,0.2)'
+  },
+
+  profileCard: {
+    mt: -10,
+    p: 4,
+    borderRadius: 6,
+    backdropFilter: 'blur(20px)',
+    background: 'rgba(255,255,255,0.7)',
+    boxShadow: '0 25px 80px rgba(0,0,0,0.08)',
+    position: 'relative',
+    zIndex: 2
+  },
+
+  avatar: {
+    width: 150,
+    height: 150,
+    border: '5px solid white',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.25)'
+  },
+
+  chip: {
+    background: 'linear-gradient(135deg,#4f46e5,#3b82f6)',
+    color: 'white',
+    fontWeight: 700
+  },
+
+  button: {
+    borderRadius: 4,
+    px: 4,
+    py: 1.5,
+    fontWeight: 800,
+    background: 'linear-gradient(135deg,#6366f1,#3b82f6)'
+  },
+
+  card: {
+    flex: 1,
+    p: 3,
+    borderRadius: 5,
+    background: 'rgba(255,255,255,0.7)',
+    backdropFilter: 'blur(10px)',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.06)'
+  },
+
+  statCard: {
+    flex: 1,
+    p: 3,
+    borderRadius: 5,
+    background: 'white',
+    boxShadow: '0 15px 40px rgba(0,0,0,0.08)'
+  }
+};

@@ -31,7 +31,7 @@ import {
 import api from '../../api/axiosConfig';
 
 export default function RelatorioFinanceiroGeral() {
-  const [periodo, setPeriodo] = useState('mes');
+  const [periodo, setPeriodo] = useState('todos'); // ✅ ALTERADO AQUI
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState({
     totalArrecadado: 0,
@@ -62,6 +62,10 @@ export default function RelatorioFinanceiroGeral() {
       return { start: dataInicial, end: dataFinal };
     }
 
+    if (p === 'todos') {
+      return { start: null, end: null }; // ✅ sem filtro
+    }
+
     switch (p) {
       case 'hoje': inicio = agora.startOf('day'); break;
       case 'semana': inicio = agora.startOf('week'); break;
@@ -82,8 +86,15 @@ export default function RelatorioFinanceiroGeral() {
     setLoading(true);
     try {
       const { start, end } = calcularPeriodo(periodo);
+
+      const params = {};
+      if (start && end) {
+        params.startDate = start;
+        params.endDate = end;
+      }
+
       const res = await api.get('/financeiro', {
-        params: { startDate: start, endDate: end },
+        params,
       });
 
       setDados({
@@ -105,7 +116,12 @@ export default function RelatorioFinanceiroGeral() {
     doc.setFontSize(16);
     doc.text('Relatório Financeiro Geral', 14, 20);
     doc.setFontSize(12);
-    doc.text(`Período: ${start} até ${end}`, 14, 30);
+
+    doc.text(
+      `Período: ${periodo === 'todos' ? 'Todos os períodos' : `${start} até ${end}`}`,
+      14,
+      30
+    );
 
     autoTable(doc, {
       head: [['Descrição', 'Valor (Kz)']],
@@ -155,25 +171,12 @@ export default function RelatorioFinanceiroGeral() {
         `,
       }}
     >
-      <Typography
-        variant="h4"
-        fontWeight={800}
-        mb={3}
-        sx={{ letterSpacing: 1 }}
-      >
+      <Typography variant="h4" fontWeight={800} mb={3}>
         Relatório Financeiro
       </Typography>
 
       {/* FILTROS */}
-      <Card
-        sx={{
-          mb: 4,
-          borderRadius: 4,
-          background: 'rgba(255,255,255,0.8)',
-          backdropFilter: 'blur(15px)',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.05)',
-        }}
-      >
+      <Card sx={{ mb: 4, borderRadius: 4, background: 'rgba(255,255,255,0.8)' }}>
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} md={3}>
@@ -184,13 +187,16 @@ export default function RelatorioFinanceiroGeral() {
                   label="Período"
                   onChange={(e) => setPeriodo(e.target.value)}
                 >
+                  <MenuItem value="todos">Todos</MenuItem> {/* ✅ NOVO */}
                   <MenuItem value="hoje">Hoje</MenuItem>
                   <MenuItem value="semana">Semana</MenuItem>
                   <MenuItem value="mes">Mês</MenuItem>
                   <MenuItem value="trimestre">Trimestre</MenuItem>
                   <MenuItem value="semestre">Semestre</MenuItem>
                   <MenuItem value="ano">Ano</MenuItem>
-                  <MenuItem value="personalizado">Personalizado - Escolha voce mesmo</MenuItem>
+                  <MenuItem value="personalizado">
+                    Personalizado - Escolha voce mesmo
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -249,10 +255,8 @@ export default function RelatorioFinanceiroGeral() {
             <Grid item xs={12} md={4}>
               <Card sx={cardStyle('#2563eb', 'rgba(37,99,235,0.15)')}>
                 <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Contribuição Total
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} mt={1}>
+                  <Typography variant="subtitle2">Contribuição Total</Typography>
+                  <Typography variant="h5">
                     Kz {formatKz(dados.totalArrecadado)}
                   </Typography>
                 </CardContent>
@@ -262,10 +266,8 @@ export default function RelatorioFinanceiroGeral() {
             <Grid item xs={12} md={4}>
               <Card sx={cardStyle('#dc2626', 'rgba(220,38,38,0.15)')}>
                 <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Despesas Totais
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} mt={1}>
+                  <Typography variant="subtitle2">Despesas Totais</Typography>
+                  <Typography variant="h5">
                     Kz {formatKz(dados.totalGasto)}
                   </Typography>
                 </CardContent>
@@ -275,10 +277,8 @@ export default function RelatorioFinanceiroGeral() {
             <Grid item xs={12} md={4}>
               <Card sx={cardStyle('#16a34a', 'rgba(22,163,74,0.15)')}>
                 <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Saldo Atual
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} mt={1}>
+                  <Typography variant="subtitle2">Saldo Atual</Typography>
+                  <Typography variant="h5">
                     Kz {formatKz(dados.saldo)}
                   </Typography>
                 </CardContent>
@@ -287,31 +287,23 @@ export default function RelatorioFinanceiroGeral() {
           </Grid>
 
           {/* GRÁFICO */}
-          <Card
-            sx={{
-              mt: 5,
-              borderRadius: 4,
-              background: 'rgba(255,255,255,0.8)',
-              backdropFilter: 'blur(15px)',
-              boxShadow: '0 15px 50px rgba(0,0,0,0.06)',
-            }}
-          >
+          <Card sx={{ mt: 5, borderRadius: 4, background: 'rgba(255,255,255,0.8)' }}>
             <CardContent>
               <Typography variant="h6" fontWeight={700} mb={2}>
                 Análise Financeira
               </Typography>
 
-              <Box height={{ xs: 300, md: 360 }}>
+              <Box height={360}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dadosGrafico}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="nome" />
                     <YAxis />
                     <Tooltip formatter={(value) => `Kz ${formatKz(value)}`} />
                     <Legend />
-                    <Bar dataKey="Contribuicao" fill="#2563eb" radius={[8,8,0,0]} />
-                    <Bar dataKey="Despesas" fill="#dc2626" radius={[8,8,0,0]} />
-                    <Bar dataKey="Saldo" fill="#16a34a" radius={[8,8,0,0]} />
+                    <Bar dataKey="Contribuicao" fill="#2563eb" />
+                    <Bar dataKey="Despesas" fill="#dc2626" />
+                    <Bar dataKey="Saldo" fill="#16a34a" />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>

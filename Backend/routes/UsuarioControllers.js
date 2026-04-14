@@ -5207,20 +5207,27 @@ router.post('/departamentos', auth, async (req, res) => {
 });
 
 
-
-
-// GET - Dados do usuário logado
+// GET - Dados do usuário logado (COM MEMBRO + FOTO + CARGOS)
 router.get('/meu-perfil', auth, async (req, res) => {
   try {
     const usuarioId = req.usuario.id;
 
-    // Buscar usuário
+    // Buscar usuário com relações básicas
     const usuario = await Usuarios.findOne({
       where: { id: usuarioId },
-      attributes: ['id', 'nome', 'funcao', 'SedeId', 'FilhalId', 'createdAt', 'updatedAt'],
+      attributes: [
+        'id',
+        'nome',
+        'funcao',
+        'SedeId',
+        'FilhalId',
+        'MembroId',
+        'createdAt',
+        'updatedAt'
+      ],
       include: [
-        { model: Sede, attributes: ['id', 'nome'], required: false },      // Inclui sede
-        { model: Filhal, attributes: ['id', 'nome'], required: false },    // Inclui filhal
+        { model: Sede, attributes: ['id', 'nome'], required: false },
+        { model: Filhal, attributes: ['id', 'nome'], required: false },
       ]
     });
 
@@ -5228,14 +5235,72 @@ router.get('/meu-perfil', auth, async (req, res) => {
       return res.status(404).json({ message: 'Usuário não encontrado.' });
     }
 
-    res.status(200).json({ usuario });
+    let membro = null;
+
+    // 🔥 SE O USUÁRIO ESTIVER VINCULADO A UM MEMBRO
+    if (usuario.MembroId) {
+      const membroData = await Membros.findOne({
+        where: { id: usuario.MembroId },
+        attributes: [
+          'id',
+          'nome',
+          'foto',
+          'genero',
+          'telefone',
+          'email'
+        ],
+      });
+
+      if (membroData) {
+        // 🔥 BUSCAR CARGOS DO MEMBRO
+        const cargosIds = await CargoMembro.findAll({
+          where: { MembroId: membroData.id },
+          attributes: ['CargoId']
+        });
+
+        const cargoIds = cargosIds.map(c => c.CargoId);
+
+        const cargos = await Cargo.findAll({
+          where: { id: cargoIds },
+          attributes: ['id', 'nome']
+        });
+
+        membro = {
+          ...membroData.dataValues,
+
+          // 🔥 FOTO COMPLETA (igual tua outra rota)
+          foto: membroData.foto
+            ? `${req.protocol}://${req.get('host')}${membroData.foto}`
+            : null,
+
+          cargos
+        };
+      }
+    }
+
+    // 🔥 RESPOSTA FINAL UNIFICADA
+    const response = {
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        funcao: usuario.funcao,
+        Sede: usuario.Sede,
+        Filhal: usuario.Filhal,
+        createdAt: usuario.createdAt,
+        updatedAt: usuario.updatedAt,
+
+        // 🔥 vínculo com membro (NOVO)
+        membro
+      }
+    };
+
+    return res.status(200).json(response);
+
   } catch (error) {
     console.error('Erro ao buscar perfil do usuário:', error);
-    res.status(500).json({ message: 'Erro ao buscar perfil do usuário.' });
+    return res.status(500).json({ message: 'Erro ao buscar perfil do usuário.' });
   }
 });
-
-
 
 
 // POST - Criar novo usuário

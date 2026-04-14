@@ -86,7 +86,7 @@ const [membrosAnchor, setMembrosAnchor] = useState(null); // ✅ ADICIONADO
 const eventosSubmenus = [
   { path: '/TabelaCulto', label: 'Culto', icon: <EventIcon /> },
   
-  { path: '/gestao/RelatorioPresencas', label: 'Relatório de Presenças por Cultos', icon: <AssessmentIcon /> }, 
+  { path: '/gestao/RelatorioPresencas', label: 'Relatório de Cultos', icon: <AssessmentIcon /> }, 
  
 ];
 
