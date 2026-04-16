@@ -147,7 +147,7 @@ router.get('/categorias/:id/despesas', auth, async (req, res) => {
     });
 
     return res.status(200).json({
-      message: 'Despesas da categoria',
+     message: 'Despesas da categoria',
       data: despesas
     });
 

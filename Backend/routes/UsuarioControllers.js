@@ -87,7 +87,7 @@ const PercentagemSubsidio =  require("../modells/PercentagemSubsidios");
 const PercentagemDesconto =  require("../modells/PercentagemDesconto");
 
 
-const NumeroMembro =  require("../modells/NumeroMembro");
+const NumeroMembro =  require("../modells/NumMembro");
 
 
 
@@ -3080,9 +3080,15 @@ router.post('/membros', auth, upload.single('foto'), async (req, res) => {
 
     const novoMembro = await Membros.create(dados);
 
-    // ===== GERAR NÚMERO DE MEMBRO =====
+   
+// ===== GERAR NÚMERO DE MEMBRO (POR IGREJA) =====
+
 const ultimoNumero = await NumeroMembro.findOne({
-  order: [['id', 'DESC']]
+  where: {
+    SedeId: req.usuario.SedeId || null,
+    FilhalId: req.usuario.FilhalId || null
+  },
+  order: [['numero', 'DESC']]
 });
 
 let proximoNumero = 0;
@@ -3093,11 +3099,12 @@ if (ultimoNumero) {
 
 const numeroFormatado = String(proximoNumero).padStart(4, '0');
 
-// Criar registro na tabela numero_membro vinculado ao membro
 await NumeroMembro.create({
   numero: numeroFormatado,
   usado: true,
-  MembroId: novoMembro.id
+  MembroId: novoMembro.id,
+  SedeId: req.usuario.SedeId || null,
+  FilhalId: req.usuario.FilhalId || null
 });
 
     // Atualiza o MembroId do usuário vinculado (se enviado)
@@ -3162,6 +3169,16 @@ await NumeroMembro.create({
     return res.status(500).json({ message: 'Erro interno no servidor.' });
   }
 });
+
+
+
+
+
+
+
+
+
+
 
 // Rota para buscar dados específicos para cartões
 router.post('/dados-cartao', auth, async (req, res) => {
@@ -3257,13 +3274,12 @@ router.post('/dados-cartao', auth, async (req, res) => {
 
           data_batismo: membro.data_batismo,
 
-          // número do membro
-          numero_membro: membro.NumeroMembros?.[0]?.numero || '----',
+          // ✅ CORREÇÃO AQUI
+          numero_membro: membro.NumberMembros?.[0]?.numero || '----',
 
           cargos: cargos.map(c => c.nome).join(', '),
           departamentos: departamentos.map(d => d.nome).join(', '),
 
-          // 🔥 NOVO (IMPORTANTÍSSIMO)
           data_emissao: dataEmissao.toISOString().split('T')[0],
           data_validade: dataValidade.toISOString().split('T')[0],
           validade_cartao_ano: anos
@@ -3278,8 +3294,6 @@ router.post('/dados-cartao', auth, async (req, res) => {
     return res.status(500).json({ message: 'Erro ao buscar dados do cartão.' });
   }
 });
-
-
 
 
 
