@@ -61,6 +61,13 @@ import PerfilMembro from '../pages/PerfilMembro'; // <-- Novo componente para /d
 
 
 
+
+
+// Importa o novo componente de Dashboard de Eventos
+import Cartao from '../pages/Cartao'; // <-- Novo componente para /dasheventos
+
+
+
 // ---------------- AuthWrapper ---------------- //
 function AuthWrapper({ children }) {
   const [isAllowed, setIsAllowed] = useState(null); // null = carregando
@@ -140,6 +147,10 @@ export default function AppRoutes() {
 
 
   <Route path="/criar/conta/membro" element={< CriarContaMembro />} /> {/* rota pública */}
+
+
+
+  <Route path="/cartao/membro" element={< Cartao />} /> {/* rota pública */}
 
      
         

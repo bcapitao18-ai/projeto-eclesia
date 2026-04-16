@@ -109,13 +109,6 @@ export default function RelatorioDespesas() {
 
   const temDados = useMemo(() => categorias.length > 0, [categorias]);
 
-  const totaisPorCategoria = useMemo(() => {
-    return categorias.map(c => ({
-      nome: c.nome,
-      valor: parseFloat(c.totalDespesas || 0)
-    }));
-  }, [categorias]);
-
   const cardStyle = {
     backdropFilter: 'blur(14px)',
     background: 'rgba(255,255,255,0.75)',
@@ -144,24 +137,12 @@ export default function RelatorioDespesas() {
     }}>
 
       {/* HEADER */}
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', md: 'center' }}
-        mb={3}
-        spacing={2}
-      >
-        <Typography variant="h4" fontWeight={900}>
-          Relatório de Despesas
-        </Typography>
+      <Typography variant="h4" fontWeight={900} mb={3}>
+        Relatório de Despesas
+      </Typography>
 
-        <Button variant="contained" onClick={buscarRelatorio}>
-          Gerar Relatório
-        </Button>
-      </Stack>
-
-      {/* FILTROS */}
-      <Stack direction="row" spacing={2} mb={4} flexWrap="wrap">
+      {/* FILTROS + BOTÃO */}
+      <Stack direction="row" spacing={2} mb={4} flexWrap="wrap" alignItems="center">
 
         <FormControl sx={{ minWidth: 180 }}>
           <InputLabel>Período</InputLabel>
@@ -179,8 +160,20 @@ export default function RelatorioDespesas() {
 
         {periodo === 'personalizado' && (
           <>
-            <TextField type="date" label="Data Inicial" value={dataInicial} onChange={(e) => setDataInicial(e.target.value)} InputLabelProps={{ shrink: true }} />
-            <TextField type="date" label="Data Final" value={dataFinal} onChange={(e) => setDataFinal(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField
+              type="date"
+              label="Data Inicial"
+              value={dataInicial}
+              onChange={(e) => setDataInicial(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              type="date"
+              label="Data Final"
+              value={dataFinal}
+              onChange={(e) => setDataFinal(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
           </>
         )}
 
@@ -193,30 +186,31 @@ export default function RelatorioDespesas() {
           </Select>
         </FormControl>
 
+        {/* BOTÃO MOVIDO */}
+        <Button
+          variant="contained"
+          onClick={buscarRelatorio}
+          sx={{ height: 56 }}
+        >
+          Gerar Relatório
+        </Button>
+
       </Stack>
 
-      {/* TOTAL GERAL */}
-      <Paper sx={{
-        ...cardStyle,
-        mb: 4,
-        background: 'linear-gradient(135deg,#dc2626,#ef4444)',
-        color: '#fff'
-      }}>
-        <Typography fontSize={12}>TOTAL GERAL</Typography>
-        <Typography fontSize={30} fontWeight={900}>
-          {total.toLocaleString()} Kz
-        </Typography>
-      </Paper>
-
-      {/* CARDS POR CATEGORIA */}
-      <Stack direction="row" spacing={2} flexWrap="wrap" mb={4}>
-        {totaisPorCategoria.map((cat) => (
-          <Paper key={cat.nome} sx={cardStyle}>
-            <Typography fontSize={12}>{cat.nome}</Typography>
-            <MoneyChip value={cat.valor} />
-          </Paper>
-        ))}
-      </Stack>
+      {/* TOTAL GERAL (NÃO FULL WIDTH) */}
+      <Box mb={4}>
+        <Paper sx={{
+          ...cardStyle,
+          width: { xs: '100%', sm: 300 },
+          background: 'linear-gradient(135deg,#dc2626,#ef4444)',
+          color: '#fff'
+        }}>
+          <Typography fontSize={12}>TOTAL GERAL</Typography>
+          <Typography fontSize={30} fontWeight={900}>
+            {total.toLocaleString()} Kz
+          </Typography>
+        </Paper>
+      </Box>
 
       {/* TABELA */}
       {loading ? (

@@ -48,6 +48,8 @@ import { createTheme, ThemeProvider, styled } from "@mui/material/styles";
 import api from "../api/axiosConfig";
 import CadastrarIgrejaDono from "../components/CadastrarIgrejaDono";
 
+import ValidadeCartaoAno from "../components/ValidadeCartaoAno";
+
 /* ---------- Styled helpers ---------- */
 const GlassCard = styled(Card)(({ theme }) => ({
   borderRadius: 16,
@@ -85,6 +87,10 @@ const GradientHeader = styled(Box)(({ theme }) => ({
 
 /* ---------- Main component ---------- */
 export default function GestaoIgrejas() {
+  const [validadeOpen, setValidadeOpen] = useState(false);
+const [selectedFilial, setSelectedFilial] = useState(null);
+const [selectedSedeValidade, setSelectedSedeValidade] = useState(null);
+
   const [sedes, setSedes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -484,7 +490,24 @@ export default function GestaoIgrejas() {
                                             <DeleteForever fontSize="small" />
                                           </IconButton>
                                         </Tooltip>
+                                      
+                                      <Button
+  size="small"
+  variant="outlined"
+  onClick={() => {
+    setSelectedFilial(filhal);
+    setSelectedSedeValidade(sede);
+    setValidadeOpen(true);
+  }}
+  sx={{ ml: 1, borderRadius: 2, textTransform: "none" }}
+>
+  Validade
+</Button>
+
                                       </Box>
+
+                                      
+
                                     }
                                   >
                                     <ListItemText
@@ -614,6 +637,13 @@ export default function GestaoIgrejas() {
               {snack.message}
             </Alert>
           </Snackbar>
+          <ValidadeCartaoAno
+  open={validadeOpen}
+  onClose={() => setValidadeOpen(false)}
+  sedeId={selectedSedeValidade?.id}
+  filhalId={selectedFilial?.id}
+  onSuccess={fetchSedes}
+/>
         </Container>
       </Box>
     </ThemeProvider>

@@ -94,6 +94,7 @@ const eventosSubmenus = [
 // MEMBROS
 const membrosSubmenus = [
   { path: '/gestao/membros', label: 'Membros', icon: <PeopleIcon /> },
+  { path: '/cartao/membro', label: 'Cartões', icon: <PeopleIcon /> },
   { path: '/gestao/cargos', label: 'Cargos', icon: <WorkIcon /> },
   { path: '/gestao/departamentos', label: 'Departamentos', icon: <WorkIcon /> },
   { path: '/gestao/relatorioSede', label: 'Relatório Estatístico dos Membros', icon: <PeopleIcon /> },

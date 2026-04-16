@@ -87,6 +87,13 @@ const PercentagemSubsidio =  require("../modells/PercentagemSubsidios");
 const PercentagemDesconto =  require("../modells/PercentagemDesconto");
 
 
+const NumeroMembro =  require("../modells/NumeroMembro");
+
+
+
+const DataValidadeCartao =  require("../modells/DataValidadeCartao");
+
+
 
 
 const {fn, col } = require('sequelize');
@@ -3073,6 +3080,26 @@ router.post('/membros', auth, upload.single('foto'), async (req, res) => {
 
     const novoMembro = await Membros.create(dados);
 
+    // ===== GERAR NÚMERO DE MEMBRO =====
+const ultimoNumero = await NumeroMembro.findOne({
+  order: [['id', 'DESC']]
+});
+
+let proximoNumero = 0;
+
+if (ultimoNumero) {
+  proximoNumero = parseInt(ultimoNumero.numero, 10) + 1;
+}
+
+const numeroFormatado = String(proximoNumero).padStart(4, '0');
+
+// Criar registro na tabela numero_membro vinculado ao membro
+await NumeroMembro.create({
+  numero: numeroFormatado,
+  usado: true,
+  MembroId: novoMembro.id
+});
+
     // Atualiza o MembroId do usuário vinculado (se enviado)
     if (MembroIdUsuario) {
       await Usuarios.update(
@@ -3135,6 +3162,163 @@ router.post('/membros', auth, upload.single('foto'), async (req, res) => {
     return res.status(500).json({ message: 'Erro interno no servidor.' });
   }
 });
+
+// Rota para buscar dados específicos para cartões
+router.post('/dados-cartao', auth, async (req, res) => {
+  try {
+    const { membrosIds } = req.body;
+
+    if (!membrosIds || !Array.isArray(membrosIds)) {
+      return res.status(400).json({ message: 'IDs inválidos.' });
+    }
+
+    const membros = await Membros.findAll({
+      where: { id: membrosIds },
+      attributes: [
+        'id',
+        'nome',
+        'foto',
+        'data_batismo',
+        'SedeId',
+        'FilhalId'
+      ],
+      include: [
+        {
+          model: NumeroMembro,
+          attributes: ['numero']
+        }
+      ]
+    });
+
+    const resultado = await Promise.all(
+      membros.map(async (membro) => {
+
+        // =========================
+        // 🔥 CARGOS
+        // =========================
+        const cargosIds = await CargoMembro.findAll({
+          where: { MembroId: membro.id },
+          attributes: ['CargoId']
+        });
+
+        const cargos = await Cargo.findAll({
+          where: { id: cargosIds.map(c => c.CargoId) },
+          attributes: ['nome']
+        });
+
+        // =========================
+        // 🔥 DEPARTAMENTOS
+        // =========================
+        const deptosIds = await DepartamentoMembros.findAll({
+          where: { MembroId: membro.id },
+          attributes: ['DepartamentoId']
+        });
+
+        const departamentos = await Departamentos.findAll({
+          where: { id: deptosIds.map(d => d.DepartamentoId) },
+          attributes: ['nome']
+        });
+
+        // =========================
+        // 🔥 CONFIG VALIDADE
+        // =========================
+        const configValidade = await DataValidadeCartao.findOne({
+          where: {
+            SedeId: membro.SedeId,
+            FilhalId: membro.FilhalId
+          }
+        });
+
+        const anos = Number(configValidade?.validade_cartao_ano) > 0
+          ? Number(configValidade.validade_cartao_ano)
+          : 1;
+
+        // =========================
+        // 🔥 DATA EMISSÃO
+        // =========================
+        const dataEmissao = new Date();
+
+        // =========================
+        // 🔥 DATA VALIDADE
+        // =========================
+        const dataValidade = new Date();
+        dataValidade.setFullYear(dataValidade.getFullYear() + anos);
+
+        // =========================
+        // 🔥 RETORNO FINAL
+        // =========================
+        return {
+          id: membro.id,
+          nome: membro.nome,
+
+          foto: membro.foto
+            ? `${req.protocol}://${req.get('host')}${membro.foto}`
+            : null,
+
+          data_batismo: membro.data_batismo,
+
+          // número do membro
+          numero_membro: membro.NumeroMembros?.[0]?.numero || '----',
+
+          cargos: cargos.map(c => c.nome).join(', '),
+          departamentos: departamentos.map(d => d.nome).join(', '),
+
+          // 🔥 NOVO (IMPORTANTÍSSIMO)
+          data_emissao: dataEmissao.toISOString().split('T')[0],
+          data_validade: dataValidade.toISOString().split('T')[0],
+          validade_cartao_ano: anos
+        };
+      })
+    );
+
+    return res.json(resultado);
+
+  } catch (err) {
+    console.error('❌ ERRO /dados-cartao:', err);
+    return res.status(500).json({ message: 'Erro ao buscar dados do cartão.' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5704,6 +5888,58 @@ router.patch('/:tipo/:id/status', async (req, res) => {
 
 
 
+router.post('/admin/config-validade-cartao', auth, async (req, res) => {
+  try {
+
+ 
+    const { SedeId, FilhalId, validade_cartao_ano } = req.body;
+
+    console.log(req.body);
+
+    if (!validade_cartao_ano) {
+      return res.status(400).json({ message: 'Validade obrigatória.' });
+    }
+
+    if (!SedeId && !FilhalId) {
+      return res.status(400).json({ message: 'Informe Sede ou Filial.' });
+    }
+
+    // 🔥 procura se já existe config
+    const where = {};
+
+    if (SedeId) where.SedeId = SedeId;
+    if (FilhalId) where.FilhalId = FilhalId;
+
+    const existe = await DataValidadeCartao.findOne({ where });
+
+    if (existe) {
+      await DataValidadeCartao.update(
+        { validade_cartao_ano },
+        { where }
+      );
+
+      return res.json({
+        message: 'Configuração atualizada com sucesso.'
+      });
+    }
+
+    // 🔥 cria nova config (SEM calcular datas)
+    await DataValidadeCartao.create({
+      SedeId: SedeId || null,
+      FilhalId: FilhalId || null,
+      validade_cartao_ano
+    });
+
+    return res.json({
+      message: 'Configuração criada com sucesso.'
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Erro ao configurar validade.' });
+  }
+});
+
 
 router.delete("/sedes/:id/com-filhais", async (req, res) => {
   const sedeId = req.params.id;
@@ -6471,6 +6707,7 @@ router.get('/membros/:membroId/historico', auth, async (req, res) => {
 
 
 
+const fs = require('fs');
 
 
 

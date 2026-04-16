@@ -181,7 +181,7 @@ export default function Perfil() {
         <InfoCard title="Segurança">
           <Typography color="text.secondary">
             A tua conta está protegida com nível elevado de segurança.
-            A sua senha está bem protejida e incriptografada. Se desejar mudá-la use a ediçao de perfil.
+            A tua senha está protegida com incriptografia. Se desejar mudá-la use a ediçao de perfil.
           </Typography>
         </InfoCard>
       </Stack>
